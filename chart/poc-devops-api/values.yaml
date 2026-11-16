@@ -2,21 +2,14 @@ application:
   fullnameOverride: poc-devops-api
   replicaCount: 1
   image:
-    repository: harbor.local/poc/poc-devops-api
-    tag: "8e85bca"
+    repository: harbor.local:8080/poc-devops/poc-devops-api
+    tag: "9fd509b"
     pullPolicy: IfNotPresent
 
-<<<<<<< Updated upstream
-image:
-  repository: harbor.local/poc/poc-devops-api
-  pullPolicy: IfNotPresent
-  tag: "9fd509b"
-=======
   service:
     type: ClusterIP
     port: 80
     targetPort: 8000
->>>>>>> Stashed changes
 
   ingress:
     enabled: true
@@ -45,21 +38,22 @@ image:
     minReplicas: 2
     maxReplicas: 5
     targetCPUUtilizationPercentage: 70
-deploymentStrategy:
-  type: canary
-  canary:
-    stableService: "poc-devops-api"
-    canaryService: "poc-devops-api-canary"
-    maxSurge: 1
-    maxUnavailable: 0
-    steps:
-      - setWeight: 10
-      - pause:
-          duration: 2m
-      - setWeight: 25
-      - pause:
-          duration: 5m
-      - setWeight: 50
-      - pause:
-          duration: 10m
-      - setWeight: 100
+
+  deploymentStrategy:
+    type: canary
+    canary:
+      stableService: "poc-devops-api"
+      canaryService: "poc-devops-api-canary"
+      maxSurge: 1
+      maxUnavailable: 0
+      steps:
+        - setWeight: 10
+        - pause:
+            duration: 2m
+        - setWeight: 25
+        - pause:
+            duration: 5m
+        - setWeight: 50
+        - pause:
+            duration: 10m
+        - setWeight: 100
