@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: poc-devops-api
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/davicarnneiro/poc-k8s-devops.git
+    targetRevision: main
+    path: chart/poc-devops-api
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: poc-app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

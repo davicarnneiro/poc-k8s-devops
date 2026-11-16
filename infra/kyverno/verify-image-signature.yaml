@@ -1,0 +1,34 @@
+apiVersion: policies.kyverno.io/v1
+kind: ImageValidatingPolicy
+metadata:
+  name: verify-cosign-signature
+spec:
+  validationActions:
+    - Deny
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values:
+            - poc-app
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  matchImageReferences:
+    - glob: "harbor.local:8080/poc-devops/*"
+  attestors:
+    - name: cosign-key
+      cosign:
+        key:
+          data: |-
+            -----BEGIN PUBLIC KEY-----
+            MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEvqw2e3d3zYGxU/vEx6On6UJo4eeq
+            pm8rReP3AAlbcjoOl/EgH7RXotXrGlIbDfLCY2c+QzQJZDzmej5l+4mmvg==
+            -----END PUBLIC KEY-----
+  validations:
+    - expression: >
+        images.containers.map(image, verifyImageSignatures(image, [attestors.cosign-key]) > 0).all(e, e)
+      message: "A imagem deve estar assinada com a chave oficial do Cosign."

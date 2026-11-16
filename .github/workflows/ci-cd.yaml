@@ -1,0 +1,66 @@
+name: CI/CD Pipeline - POC Kubernetes Local
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '.github/workflows/**'
+
+env:
+  REGISTRY: harbor.local:8080
+  IMAGE_NAME: poc-devops/poc-devops-api
+
+jobs:
+  build-test-security-deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout do codigo
+        uses: actions/checkout@v4
+
+      - name: Setup Python e Testes Unitarios
+        working-directory: app
+        run: |
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install -r requirements.txt
+          pytest -v
+
+      - name: Analise SAST com SonarQube
+        uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: http://sonar.local:8080
+        with:
+          projectBaseDir: app
+
+      - name: Build da Imagem Docker Multi-Stage
+        id: build
+        run: |
+          IMAGE_TAG="${GITHUB_SHA::7}"
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          docker build -t $REGISTRY/$IMAGE_NAME:$IMAGE_TAG ./app
+
+      - name: Scan de Vulnerabilidades com Trivy
+        run: |
+          trivy image --exit-code 1 --severity CRITICAL --no-progress $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+
+      - name: Login e Push para o Harbor Local
+        run: |
+          echo "${{ secrets.HARBOR_PASSWORD }}" | docker login $REGISTRY -u "${{ secrets.HARBOR_USER }}" --password-stdin
+          docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+
+      - name: Assinar Imagem com Cosign
+        env:
+          COSIGN_PASSWORD: ""
+        run: |
+          cosign sign --yes --allow-insecure-registry --key /opt/cosign/cosign.key $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+
+      - name: Atualizar Tag no Chart Helm (GitOps ArgoCD)
+        run: |
+          sed -i "s/tag: .*/tag: \"$IMAGE_TAG\"/" chart/poc-devops-api/values.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add chart/poc-devops-api/values.yaml
+          git commit -m "chore(cd): update image tag to $IMAGE_TAG [skip ci]"
+          git push

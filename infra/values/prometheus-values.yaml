@@ -1,0 +1,52 @@
+grafana:
+  adminPassword: "admin"
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - grafana.local
+    path: /
+    pathType: Prefix
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki.monitoring.svc.cluster.local:3100
+      access: proxy
+      isDefault: false
+
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    retention: 2d
+    resources:
+      requests:
+        cpu: 150m
+        memory: 384Mi
+      limits:
+        cpu: 500m
+        memory: 768Mi
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+additionalPrometheusRulesMap:
+  poc-app-rules:
+    groups:
+      - name: poc-devops-api.rules
+        rules:
+          - alert: PocAppPodDown
+            expr: up{job="poc-devops-api"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Instancia da aplicacao poc-devops-api fora do ar"
+              description: "O endpoint /metrics da poc-devops-api nao responde ha mais de 1 minuto."

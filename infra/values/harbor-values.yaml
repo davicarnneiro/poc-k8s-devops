@@ -1,0 +1,48 @@
+expose:
+  type: ingress
+  tls:
+    enabled: false
+  ingress:
+    hosts:
+      core: harbor.local
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+
+externalURL: http://harbor.local:8080
+harborAdminPassword: "Harbor@12345"
+
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    registry:
+      size: 5Gi
+
+trivy:
+  enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+notary:
+  enabled: false
+
+core:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+portal:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+registry:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi

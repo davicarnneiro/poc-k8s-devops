@@ -1,0 +1,27 @@
+configs:
+  params:
+    server.insecure: true
+
+server:
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hostname: argocd.local
+    path: /
+    pathType: Prefix
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+controller:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+repoServer:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi

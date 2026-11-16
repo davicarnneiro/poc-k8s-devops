@@ -1,0 +1,36 @@
+community:
+  enabled: true
+
+monitoringPasscode: "SonarMonitoring123"
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hosts:
+    - name: sonar.local
+      path: /
+      pathType: Prefix
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+
+jvmOpts: "-Xmx1024m -Xms512m"
+jvmCeOpts: "-Xmx512m -Xms256m"
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 1Gi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+
+persistence:
+  enabled: false
+
+postgresql:
+  enabled: true
+  primary:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
