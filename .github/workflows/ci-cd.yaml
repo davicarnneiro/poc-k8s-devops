@@ -79,6 +79,7 @@ jobs:
       - name: Assinar Imagem com Cosign
         env:
           COSIGN_PASSWORD: ""
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
         run: |
           IMAGE_TAG="${{ needs.build-and-scan.outputs.image_tag }}"
           IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$IMAGE_NAME:$IMAGE_TAG)
