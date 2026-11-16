@@ -1,5 +1,5 @@
 # Estágio 1: Builder (instala dependências em virtualenv isolado)
-FROM python:3.12.8-alpine3.21 AS builder
+FROM python:3.12.12-alpine3.22 AS builder
 
 WORKDIR /build
 
@@ -10,8 +10,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip==24.3.1 \
     && pip install --no-cache-dir -r requirements.txt
 
-# Estágio 2: Runtime (imagem final mínima e non-root)
-FROM python:3.12.8-alpine3.21 AS runtime
+# Estágio 2: Runtime (imagem final mínima, atualizada e non-root)
+FROM python:3.12.12-alpine3.22 AS runtime
 
 LABEL org.opencontainers.image.title="poc-devops-api" \
       org.opencontainers.image.description="API FastAPI para POC Kubernetes Local"
@@ -22,8 +22,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Cria usuário e grupo non-root
-RUN addgroup -S -g 1001 appgroup \
+# Atualiza pacotes base do SO para corrigir CVEs e cria usuário non-root
+RUN apk upgrade --no-cache \
+    && addgroup -S -g 1001 appgroup \
     && adduser -S -u 1001 -G appgroup appuser
 
 COPY --from=builder /opt/venv /opt/venv
