@@ -1,39 +1,65 @@
-replicaCount: 2
+application:
+  fullnameOverride: poc-devops-api
+  replicaCount: 1
+  image:
+    repository: harbor.local/poc/poc-devops-api
+    tag: "8e85bca"
+    pullPolicy: IfNotPresent
 
+<<<<<<< Updated upstream
 image:
   repository: harbor.local/poc/poc-devops-api
   pullPolicy: IfNotPresent
   tag: "9fd509b"
+=======
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 8000
+>>>>>>> Stashed changes
 
-service:
-  type: ClusterIP
-  port: 80
-  targetPort: 8000
+  ingress:
+    enabled: true
+    className: nginx
+    host: app.local
+    path: /
+    pathType: Prefix
 
-ingress:
-  enabled: true
-  className: nginx
-  host: app.local
-  path: /
-  pathType: Prefix
+  config:
+    appEnv: "production-local"
+    appMessage: "Aplicacao implantada via Helm + ArgoCD!"
 
-config:
-  appEnv: "production-local"
-  appMessage: "Aplicacao implantada via Helm + ArgoCD!"
+  secret:
+    apiToken: "token-secreto-poc-2026"
 
-secret:
-  apiToken: "token-secreto-poc-2026"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
 
-resources:
-  requests:
-    cpu: 100m
-    memory: 128Mi
-  limits:
-    cpu: 300m
-    memory: 256Mi
-
-autoscaling:
-  enabled: true
-  minReplicas: 2
-  maxReplicas: 5
-  targetCPUUtilizationPercentage: 70
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+deploymentStrategy:
+  type: canary
+  canary:
+    stableService: "poc-devops-api"
+    canaryService: "poc-devops-api-canary"
+    maxSurge: 1
+    maxUnavailable: 0
+    steps:
+      - setWeight: 10
+      - pause:
+          duration: 2m
+      - setWeight: 25
+      - pause:
+          duration: 5m
+      - setWeight: 50
+      - pause:
+          duration: 10m
+      - setWeight: 100

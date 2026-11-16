@@ -1,11 +1,12 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: {{ include "poc-devops-api.fullname" . }}
   labels:
     {{- include "poc-devops-api.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: 3
   selector:
     matchLabels:
       {{- include "poc-devops-api.selectorLabels" . | nindent 6 }}
@@ -22,15 +23,15 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - name: http
-              containerPort: {{ .Values.service.targetPort }}
+              containerPort: 8000
               protocol: TCP
-          envFrom:
-            - configMapRef:
-                name: {{ include "poc-devops-api.fullname" . }}-config
-            - secretRef:
-                name: {{ include "poc-devops-api.fullname" . }}-secret
           livenessProbe:
             httpGet:
               path: /healthz
@@ -45,8 +46,14 @@ spec:
             periodSeconds: 5
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
+  strategy:
+    canary:
+      stableService: {{ .Values.deploymentStrategy.canary.stableService }}
+      canaryService: {{ .Values.deploymentStrategy.canary.canaryService }}
+      maxSurge: {{ .Values.deploymentStrategy.canary.maxSurge }}
+      maxUnavailable: {{ .Values.deploymentStrategy.canary.maxUnavailable }}
+      trafficRouting:
+        nginx:
+          stableIngress: {{ include "poc-devops-api.fullname" . }}
+      steps:
+        {{- toYaml .Values.deploymentStrategy.canary.steps | nindent 8 }}

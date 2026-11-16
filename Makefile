@@ -103,3 +103,5 @@ observability:
 		--set loki.resources.requests.cpu=100m \
 		--set loki.resources.requests.memory=256Mi
 	@echo "📊 Grafana disponivel em: http://grafana.local (admin / admin)"
+rollouts:
+	./scripts/install-argo-rollouts.sh
