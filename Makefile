@@ -53,8 +53,8 @@ configure-kind-registry:
 	@echo "🔧 Configurando containerd nos nós kind para harbor.local..."
 	@INGRESS_IP=$$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.spec.clusterIP}'); \
 	for node in $$(kind get nodes --name $(CLUSTER_NAME)); do \
-		docker exec $$node mkdir -p /etc/containerd/certs.d/harbor.local; \
-		docker exec $$node sh -c "printf 'server = \"http://%s\"\n[host.\"http://%s\"]\n  capabilities = [\"pull\", \"resolve\", \"push\"]\n  override_path = true\n' '$$INGRESS_IP' '$$INGRESS_IP' > /etc/containerd/certs.d/harbor.local/hosts.toml"; \
+		docker exec $$node mkdir -p /etc/containerd/certs.d/harbor.local:8080; \
+		docker exec $$node sh -c "printf 'server = \"http://%s\"\n[host.\"http://%s\"]\n  capabilities = [\"pull\", \"resolve\", \"push\"]\n  override_path = true\n' '$$INGRESS_IP' '$$INGRESS_IP' > /etc/containerd/certs.d/harbor.local:8080/hosts.toml"; \
 	done
 
 harbor:

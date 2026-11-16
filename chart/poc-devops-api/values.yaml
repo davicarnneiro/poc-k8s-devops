@@ -36,11 +36,11 @@ container:
       protocol: TCP
   resources:
     requests:
-      cpu: 250m
-      memory: 512Mi
+      cpu: 100m
+      memory: 128Mi
     limits:
-      cpu: "1"
-      memory: 1Gi
+      cpu: "250m"
+      memory: 512Mi
 
 service:
   enabled: true
@@ -64,7 +64,7 @@ serviceMonitor:
 ingress:
   enabled: true
   className: nginx
-  host: app.local
+  host: app.local:8080
   path: /
   pathType: Prefix
 
