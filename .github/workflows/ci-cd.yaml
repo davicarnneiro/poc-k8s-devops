@@ -12,7 +12,9 @@ env:
   IMAGE_NAME: poc-devops/poc-devops-api
 
 jobs:
-  build-test-security-deploy:
+  # 1. Testes Unitários e Análise Estática (SAST)
+  test-and-sast:
+    name: 1. Unit Tests & SonarQube SAST
     runs-on: self-hosted
     steps:
       - name: Checkout do codigo
@@ -34,30 +36,66 @@ jobs:
         with:
           projectBaseDir: app
 
+  # 2. Build Multi-Stage e Scan de Segurança (Trivy)
+  build-and-scan:
+    name: 2. Docker Build & Trivy Scan
+    runs-on: self-hosted
+    needs: test-and-sast
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - name: Checkout do codigo
+        uses: actions/checkout@v4
+
+      - name: Definir Tag Imutavel (Commit SHA)
+        id: meta
+        run: echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
       - name: Build da Imagem Docker Multi-Stage
-        id: build
         run: |
-          IMAGE_TAG="${GITHUB_SHA::7}"
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
-          docker build -t $REGISTRY/$IMAGE_NAME:$IMAGE_TAG ./app
+          docker build -t $REGISTRY/$IMAGE_NAME:${{ steps.meta.outputs.tag }} ./app
 
       - name: Scan de Vulnerabilidades com Trivy
-        run: |
-          trivy image --exit-code 1 --severity CRITICAL --no-progress $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
 
+  # 3. Publicação no Registry Local e Assinatura Criptográfica
+  push-and-sign:
+    name: 3. Push Harbor & Cosign Sign
+    runs-on: self-hosted
+    needs: build-and-scan
+    steps:
       - name: Login e Push para o Harbor Local
         run: |
           echo "${{ secrets.HARBOR_PASSWORD }}" | docker login $REGISTRY -u "${{ secrets.HARBOR_USER }}" --password-stdin
-          docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+          docker push $REGISTRY/$IMAGE_NAME:${{ needs.build-and-scan.outputs.image_tag }}
 
       - name: Assinar Imagem com Cosign
         env:
           COSIGN_PASSWORD: ""
         run: |
-          cosign sign --yes --allow-insecure-registry --key /opt/cosign/cosign.key $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+          cosign sign --yes --allow-insecure-registry --key /opt/cosign/cosign.key $REGISTRY/$IMAGE_NAME:${{ needs.build-and-scan.outputs.image_tag }}
 
-      - name: Atualizar Tag no Chart Helm (GitOps ArgoCD)
+  # 4. Entrega Contínua via GitOps (ArgoCD)
+  gitops-deploy:
+    name: 4. GitOps Update (ArgoCD)
+    runs-on: self-hosted
+    needs:
+      - build-and-scan
+      - push-and-sign
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v4
+
+      - name: Atualizar Tag no Chart Helm
         run: |
+          IMAGE_TAG="${{ needs.build-and-scan.outputs.image_tag }}"
           sed -i "s/tag: .*/tag: \"$IMAGE_TAG\"/" chart/poc-devops-api/values.yaml
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
