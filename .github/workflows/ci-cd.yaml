@@ -83,7 +83,8 @@ jobs:
         run: |
           IMAGE_TAG="${{ needs.build-and-scan.outputs.image_tag }}"
           IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$IMAGE_NAME:$IMAGE_TAG)
-          cosign sign --yes --tlog-upload=false --allow-http-registry --allow-insecure-registry --key env://COSIGN_PRIVATE_KEY "$IMAGE_DIGEST"
+          cosign signing-config create --with-default-services=false > /tmp/signing-config.json
+          cosign sign --yes --signing-config=/tmp/signing-config.json --allow-http-registry --allow-insecure-registry --key env://COSIGN_PRIVATE_KEY "$IMAGE_DIGEST"
 
   # 4. Entrega Contínua via GitOps (ArgoCD)
   gitops-deploy:
