@@ -58,5 +58,4 @@ spec:
       analysis:
         templates: {{ toYaml .Values.deploymentStrategy.canary.analysis.templates | nindent 10 }}
         args: {{ toYaml .Values.deploymentStrategy.canary.analysis.args | nindent 10 }}
-      {{- end }}
 {{- end }}
