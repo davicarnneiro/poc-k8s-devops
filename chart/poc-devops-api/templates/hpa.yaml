@@ -2,12 +2,12 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "application.fullname" . }}
+  name: {{ include "poc-devops-api.fullname" . }}
 spec:
   scaleTargetRef:
     apiVersion: {{ ternary "argoproj.io/v1alpha1" "apps/v1" (eq .Values.workload.type "rollout") }}
     kind: {{ ternary "Rollout" (title .Values.workload.type) (eq .Values.workload.type "rollout") }}
-    name: {{ include "application.fullname" . }}
+    name: {{ include "poc-devops-api.fullname" . }}
   minReplicas: {{ .Values.hpa.minReplicas }}
   maxReplicas: {{ .Values.hpa.maxReplicas }}
   metrics: {{- toYaml .Values.hpa.metrics | nindent 4 }}

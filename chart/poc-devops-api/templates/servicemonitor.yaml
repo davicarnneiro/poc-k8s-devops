@@ -2,13 +2,13 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "application.fullname" . }}
+  name: {{ include "poc-devops-api.fullname" . }}
   {{- with .Values.serviceMonitor.namespace }}
   namespace: {{ . }}
   {{- end }}
   labels: {{- toYaml .Values.serviceMonitor.labels | nindent 4 }}
 spec:
   selector:
-    matchLabels: {{- include "application.selectorLabels" . | nindent 6 }}
+    matchLabels: {{- include "poc-devops-api.selectorLabels" . | nindent 6 }}
   endpoints: {{- toYaml .Values.serviceMonitor.endpoints | nindent 4 }}
 {{- end }}

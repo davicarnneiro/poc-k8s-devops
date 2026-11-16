@@ -1,5 +1,5 @@
 {{- if .Values.service.enabled }}
-{{- $fullname := include "application.fullname" . -}}
+{{- $fullname := include "poc-devops-api.fullname" . -}}
 {{- if eq .Values.deploymentStrategy.type "canary" }}
 # ---------------------------------------------------------
 # CANARY - STABLE SERVICE
@@ -9,7 +9,7 @@ kind: Service
 metadata:
   name: {{ default $fullname .Values.deploymentStrategy.canary.stableService | quote }}
   labels:
-    {{- include "application.labels" . | nindent 4 }}
+    {{- include "poc-devops-api.labels" . | nindent 4 }}
   {{- with .Values.service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -17,7 +17,7 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   selector:
-    {{- include "application.selectorLabels" . | nindent 4 }}
+    {{- include "poc-devops-api.selectorLabels" . | nindent 4 }}
   ports:
     {{- toYaml .Values.service.ports | nindent 4 }}
 
@@ -30,7 +30,7 @@ kind: Service
 metadata:
   name: {{ default (printf "%s-canary" $fullname) .Values.deploymentStrategy.canary.canaryService | quote }}
   labels:
-    {{- include "application.labels" . | nindent 4 }}
+    {{- include "poc-devops-api.labels" . | nindent 4 }}
   {{- with .Values.service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -38,7 +38,7 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   selector:
-    {{- include "application.selectorLabels" . | nindent 4 }}
+    {{- include "poc-devops-api.selectorLabels" . | nindent 4 }}
   ports:
     {{- toYaml .Values.service.ports | nindent 4 }}
 
@@ -52,7 +52,7 @@ kind: Service
 metadata:
   name: {{ $fullname }}
   labels:
-    {{- include "application.labels" . | nindent 4 }}
+    {{- include "poc-devops-api.labels" . | nindent 4 }}
   {{- with .Values.service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -62,6 +62,6 @@ spec:
   ports:
     {{- toYaml .Values.service.ports | nindent 4 }}
   selector:
-    {{- include "application.selectorLabels" . | nindent 4 }}
+    {{- include "poc-devops-api.selectorLabels" . | nindent 4 }}
 {{- end }}
 {{- end }}

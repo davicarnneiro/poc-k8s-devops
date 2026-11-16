@@ -1,5 +1,5 @@
 {{- if .Values.ingress.enabled }}
-{{- $fullname := include "application.fullname" . -}}
+{{- $fullname := include "poc-devops-api.fullname" . -}}
 {{- $serviceName := $fullname -}}
 {{- if and
       (eq .Values.workload.type "rollout")
@@ -14,9 +14,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "application.fullname" . }}
+  name: {{ include "poc-devops-api.fullname" . }}
   labels:
-    {{- include "application.labels" . | nindent 4 }}
+    {{- include "poc-devops-api.labels" . | nindent 4 }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
@@ -27,7 +27,7 @@ spec:
             pathType: {{ .Values.ingress.pathType }}
             backend:
               service:
-                name: {{ include "application.fullname" . }}
+                name: {{ include "poc-devops-api.fullname" . }}
                 port:
                   number: {{ (index .Values.service.ports 0).port | default 80 }}
 {{- end }}
