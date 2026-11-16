@@ -1,12 +1,15 @@
 fullnameOverride: poc-devops-api
 replicaCount: 1
+
 image:
   repository: harbor.local:8080/poc-devops/poc-devops-api
   tag: "9fd509b"
   pullPolicy: IfNotPresent
+
 workload:
-    type: rollout
-    replicas: 2
+  type: rollout
+  replicas: 2
+
 deploymentStrategy:
   type: canary
   canary:
@@ -25,34 +28,35 @@ deploymentStrategy:
       - pause:
           duration: 10m
       - setWeight: 100
+
 container:
-    ports:
-      - name: http
-        containerPort: 8000
-        protocol: TCP
-    resources:
-      requests:
-        cpu: 250m
-        memory: 512Mi
-      limits:
-        cpu: "1"
-        memory: 1Gi
+  ports:
+    - name: http
+      containerPort: 8000
+      protocol: TCP
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
 
 service:
-    enabled: true
-    type: ClusterIP
-    ports:
-      - name: http
-        port: 80
-        targetPort: http
-        protocol: TCP
+  enabled: true
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
 
 serviceMonitor:
   enabled: true
   labels:
     release: kube-prometheus-stack
   endpoints:
-    - port: http # nome da porta do Service (= container 8000)
+    - port: http
       path: /metrics
       interval: 30s
       scheme: http
@@ -76,5 +80,3 @@ autoscaling:
   minReplicas: 2
   maxReplicas: 5
   targetCPUUtilizationPercentage: 70
-
-

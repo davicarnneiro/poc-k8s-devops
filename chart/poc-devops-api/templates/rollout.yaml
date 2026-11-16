@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "poc-devops-api.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.workload.replicas | default .Values.replicaCount }}
   revisionHistoryLimit: 3
   selector:
     matchLabels:
@@ -29,9 +29,7 @@ spec:
             capabilities:
               drop: ["ALL"]
           ports:
-            - name: http
-              containerPort: 8000
-              protocol: TCP
+            {{- toYaml .Values.container.ports | nindent 12 }}
           livenessProbe:
             httpGet:
               path: /healthz
@@ -45,7 +43,7 @@ spec:
             initialDelaySeconds: 3
             periodSeconds: 5
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml .Values.container.resources | nindent 12 }}
   strategy:
     canary:
       stableService: {{ .Values.deploymentStrategy.canary.stableService }}
