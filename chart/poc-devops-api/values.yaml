@@ -64,7 +64,7 @@ serviceMonitor:
 ingress:
   enabled: true
   className: nginx
-  host: app.local:8080
+  host: app.local
   path: /
   pathType: Prefix
 
