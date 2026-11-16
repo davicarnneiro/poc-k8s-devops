@@ -3,7 +3,7 @@ replicaCount: 2
 image:
   repository: harbor.local/poc/poc-devops-api
   pullPolicy: IfNotPresent
-  tag: "8e85bca"
+  tag: "9fd509b"
 
 service:
   type: ClusterIP
