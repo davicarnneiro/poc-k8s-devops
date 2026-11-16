@@ -1,4 +1,4 @@
-# Estágio 1: Builder (instala dependências em virtualenv isolado)
+# Estágio 1: Builder
 FROM python:3.12.12-alpine3.22 AS builder
 
 WORKDIR /build
@@ -7,10 +7,11 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip==24.3.1 \
-    && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip>=26.2.0 \
+    && pip install --no-cache-dir -r requirements.txt \
+    && rm -rf /opt/venv/lib/python*/site-packages/pip*
 
-# Estágio 2: Runtime (imagem final mínima, atualizada e non-root)
+# Estágio 2: Runtime
 FROM python:3.12.12-alpine3.22 AS runtime
 
 LABEL org.opencontainers.image.title="poc-devops-api" \
@@ -22,8 +23,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Atualiza pacotes base do SO para corrigir CVEs e cria usuário non-root
 RUN apk upgrade --no-cache \
+    && rm -rf /usr/local/lib/python*/site-packages/pip* \
     && addgroup -S -g 1001 appgroup \
     && adduser -S -u 1001 -G appgroup appuser
 
