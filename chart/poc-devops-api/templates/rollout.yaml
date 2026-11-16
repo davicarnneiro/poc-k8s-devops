@@ -2,20 +2,21 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
-  name: {{ include "application.fullname.fullname" . }}
+  name: {{ include "poc-devops-api.fullname" . }}
   labels:
-    {{- include "application.fullname.labels" . | nindent 4 }}
+    {{- include "poc-devops-api.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.hpa.enabled }}
+  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.workload.replicas | default .Values.replicaCount }}
-  revisionHistoryLimit: {{ .Values.workload.revisionHistoryLimit }}
+  {{- end }}
+  revisionHistoryLimit: {{ .Values.workload.revisionHistoryLimit | default 3 }}
   selector:
     matchLabels:
-      {{- include "application.fullname.selectorLabels" . | nindent 6 }}
+      {{- include "poc-devops-api.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "application.fullname.selectorLabels" . | nindent 8 }}
+        {{- include "poc-devops-api.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -48,14 +49,20 @@ spec:
             {{- toYaml .Values.container.resources | nindent 12 }}
   strategy:
     canary:
-      stableService: {{ default (include "application.fullname" .) .Values.deploymentStrategy.canary.stableService }}
-      canaryService: {{ default (printf "%s-canary" (include "application.fullname" .)) .Values.deploymentStrategy.canary.canaryService }}
+      stableService: {{ default (include "poc-devops-api.fullname" .) .Values.deploymentStrategy.canary.stableService }}
+      canaryService: {{ default (printf "%s-canary" (include "poc-devops-api.fullname" .)) .Values.deploymentStrategy.canary.canaryService }}
       maxSurge: {{ .Values.deploymentStrategy.canary.maxSurge }}
       maxUnavailable: {{ .Values.deploymentStrategy.canary.maxUnavailable }}
+      trafficRouting:
+        nginx:
+          stableIngress: {{ include "poc-devops-api.fullname" . }}
       steps:
         {{- toYaml .Values.deploymentStrategy.canary.steps | nindent 8 }}
-      {{- if .Values.deploymentStrategy.canary.analysis.enabled }}
+      {{- if and .Values.deploymentStrategy.canary.analysis .Values.deploymentStrategy.canary.analysis.enabled }}
       analysis:
-        templates: {{ toYaml .Values.deploymentStrategy.canary.analysis.templates | nindent 10 }}
-        args: {{ toYaml .Values.deploymentStrategy.canary.analysis.args | nindent 10 }}
+        templates:
+          {{- toYaml .Values.deploymentStrategy.canary.analysis.templates | nindent 10 }}
+        args:
+          {{- toYaml .Values.deploymentStrategy.canary.analysis.args | nindent 10 }}
+      {{- end }}
 {{- end }}
