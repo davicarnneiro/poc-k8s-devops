@@ -1,19 +1,21 @@
+{{- if eq .Values.workload.type "rollout" }}
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
-  name: {{ include "poc-devops-api.fullname" . }}
+  name: {{ include "application.fullname.fullname" . }}
   labels:
-    {{- include "poc-devops-api.labels" . | nindent 4 }}
+    {{- include "application.fullname.labels" . | nindent 4 }}
 spec:
+  {{- if not .Values.hpa.enabled }}
   replicas: {{ .Values.workload.replicas | default .Values.replicaCount }}
-  revisionHistoryLimit: 3
+  revisionHistoryLimit: {{ .Values.workload.revisionHistoryLimit }}
   selector:
     matchLabels:
-      {{- include "poc-devops-api.selectorLabels" . | nindent 6 }}
+      {{- include "application.fullname.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "poc-devops-api.selectorLabels" . | nindent 8 }}
+        {{- include "application.fullname.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -46,12 +48,15 @@ spec:
             {{- toYaml .Values.container.resources | nindent 12 }}
   strategy:
     canary:
-      stableService: {{ .Values.deploymentStrategy.canary.stableService }}
-      canaryService: {{ .Values.deploymentStrategy.canary.canaryService }}
+      stableService: {{ default (include "application.fullname" .) .Values.deploymentStrategy.canary.stableService }}
+      canaryService: {{ default (printf "%s-canary" (include "application.fullname" .)) .Values.deploymentStrategy.canary.canaryService }}
       maxSurge: {{ .Values.deploymentStrategy.canary.maxSurge }}
       maxUnavailable: {{ .Values.deploymentStrategy.canary.maxUnavailable }}
-      trafficRouting:
-        nginx:
-          stableIngress: {{ include "poc-devops-api.fullname" . }}
       steps:
         {{- toYaml .Values.deploymentStrategy.canary.steps | nindent 8 }}
+      {{- if .Values.deploymentStrategy.canary.analysis.enabled }}
+      analysis:
+        templates: {{ toYaml .Values.deploymentStrategy.canary.analysis.templates | nindent 10 }}
+        args: {{ toYaml .Values.deploymentStrategy.canary.analysis.args | nindent 10 }}
+      {{- end }}
+{{- end }}
