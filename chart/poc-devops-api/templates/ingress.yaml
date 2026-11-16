@@ -17,5 +17,5 @@ spec:
               service:
                 name: {{ include "poc-devops-api.fullname" . }}
                 port:
-                  number: {{ .Values.service.port }}
+                  number: {{ (index .Values.service.ports 0).port | default 80 }}
 {{- end }}
