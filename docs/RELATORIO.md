@@ -32,6 +32,7 @@ Detalhes: decisões (seção 1), dificuldades (seção 2) e melhorias (seção 3
 | **`make smoke-test`** | 13 verificações automáticas; as de política validam a **causa** da negação, e não só o fato de ter sido negado |
 | **Makefile como ponto único** | Reprodutível, idempotente, versões fixas, simples de explicar |
 | **Versões fixas** | Charts e manifests pinados para que o ambiente funcione igual no futuro |
+| **Um Ingress com nomes `*.local` (e não uma porta por serviço)** | Todos os serviços compartilham a porta 8080 e o Ingress escolhe pelo nome do host, o que exige uma entrada no `/etc/hosts`. Uma porta por serviço (NodePort + `extraPortMappings`) foi considerada, mas: (1) o nome do registry (`harbor.local:8080`) faz parte do nome da imagem e precisa apontar para o mesmo lugar para o host, os nós do kind e os pods (Kyverno), e `localhost` significa algo diferente em cada um; (2) o canary do Argo Rollouts divide o tráfego pelo Ingress, então o app precisa ficar atrás dele; (3) os NodePorts ficam na faixa 30000–32767 e as portas do host só podem mudar recriando o cluster, com risco de conflito com outros programas. O `/etc/hosts` ainda seria necessário para o Harbor, então a troca aumentaria a complexidade sem eliminar o passo |
 
 ## 2. Dificuldades encontradas
 
@@ -75,6 +76,7 @@ Detalhes: decisões (seção 1), dificuldades (seção 2) e melhorias (seção 3
 - **Análise do canary:** excluir as sondas (`/healthz`) das métricas, exigir um tráfego mínimo antes de promover e considerar também logs (Loki)
 - **Alertas:** notificação real no Alertmanager (e-mail/Slack) e SLOs com *burn rate*
 - **Logs:** migrar do `loki-stack` (descontinuado) para o chart do Loki 3.x, resolvendo o aviso de volume no Grafana
+- **Nomes de host:** usar `*.localhost` (resolve para o loopback sem editar o `/etc/hosts` e dispensa o `insecure-registries` do Docker) para eliminar o único passo manual na máquina; exige renomear os hosts (ingress, Harbor, política do Kyverno, imagens) e revalidar o ambiente
 - **Versionamento:** versão semântica (`vX.Y.Z`) nas imagens e no chart, gerada por tags git ou por *conventional commits*, além do SHA
 - **Supply chain:** SBOM (Syft), attestations e assinatura *keyless*
 - **Segurança do cluster:** NetworkPolicies, PodSecurity `restricted`, Kyverno em modo mais amplo
