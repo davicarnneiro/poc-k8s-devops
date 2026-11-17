@@ -63,7 +63,7 @@ def _should_fail() -> bool:
     return int(n * rate) > int((n - 1) * rate)
 
 
-@app.get("/")
+@app.get("/", responses={500: {"description": "Erro simulado (APP_ERROR_RATE), usado na demo de rollback automatico"}})
 def read_root():
     if _should_fail():
         raise HTTPException(status_code=500, detail="erro simulado (APP_ERROR_RATE)")
