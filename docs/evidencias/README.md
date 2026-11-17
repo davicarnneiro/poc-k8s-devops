@@ -33,7 +33,7 @@ Os itens marcados com `[ ]` ainda não têm evidência salva.
 | 12 | Logs no Loki | 12-loki.png | [x] |
 | 13 | Regras de alerta no Prometheus | 13-alerta.png | [x] |
 | 14 | HPA escalando | 14-hpa.png | [x] |
-| 15 | Rollback manual | 15-rollback.png | [ ] |
+| 15 | Rollback manual | 15-rollback.png | [x] |
 | 16 | Rollback **automático** | 16-rollback-automatico.png (+ 16b, 16c) | [x] |
 | 17 | Smoke test 13/13 | 17-smoke-test.txt | [x] |
 
@@ -144,7 +144,11 @@ passa de 66% para **121%** do alvo de 70% e o HPA aumenta as réplicas do Rollou
 autoscaling horizontal funcionando com o metrics-server.
 
 ### 15. Rollback manual
-*(pendente)* `kubectl argo rollouts abort poc-devops-api -n poc-app` durante um canary em pausa.
+![rollback manual](15-rollback.png)
+
+Com um canary em andamento (nova revisão 8, gerada pela troca da mensagem no ConfigMap), o comando `kubectl argo rollouts abort poc-devops-api -n poc-app`
+(à esquerda) devolve `rollout 'poc-devops-api' aborted`. À direita, o Rollout fica **Degraded** com `RolloutAborted: Rollout aborted update to revision 8`,
+`Step 0/7` e **peso 0%**: o ReplicaSet da versão estável (`85f7885465`, 2 pods) segue servindo todo o tráfego. Diferente do item 16, aqui a decisão é humana.
 
 ### 16. Rollback automático (canary reprovado pela análise)
 ![rollback automatico](16-rollback-automatico.png)
