@@ -1,5 +1,15 @@
 # Relatório Técnico – POC Kubernetes Local DevOps
 
+## Resumo
+
+- **O que foi feito:** um ciclo completo de entrega, 100% local (kind, Harbor, GitHub Actions self-hosted): testes, SonarQube e Trivy no pipeline, imagem assinada com Cosign, deploy por GitOps (ArgoCD), canary com Argo Rollouts, políticas Kyverno e observabilidade (Prometheus, Grafana, Loki). Sobe com `make all`.
+- **Diferenciais entregues:** Cosign, ArgoCD, Canary com **rollback automático** (análise no Prometheus) e alertas.
+- **Decisão central:** o pipeline nunca acessa o cluster; ele só altera o Git (a tag da imagem, o SHA do commit) e o ArgoCD aplica. O Kyverno garante que só roda imagem assinada pelo pipeline.
+- **Maior dificuldade:** o registry local sem TLS. Nós do kind, Kyverno e Cosign precisavam alcançar e confiar no `harbor.local:8080`, e cada um falhou por um motivo diferente (seção 2).
+- **Principais melhorias futuras:** segredos e TLS de verdade, assinatura *keyless*, Gateway API em vez do ingress-nginx e versionamento semântico (seção 3).
+
+Detalhes: decisões (seção 1), dificuldades (seção 2) e melhorias (seção 3). Provas de funcionamento em [evidencias/](evidencias/README.md).
+
 ## 1. Decisões técnicas
 
 | Decisão | Motivo |
@@ -56,21 +66,6 @@
 | `secret_loaded: false` | O Rollout não tinha `envFrom` para o ConfigMap e o Secret | `envFrom` + checksum nas anotações para reiniciar os pods quando eles mudam |
 | Grafana em `CrashLoopBackOff` | Dois datasources marcados como padrão: o chart `loki-stack` cria o seu com `isDefault: true` | `loki.isDefault: false` |
 | Timeouts de pull de imagem no primeiro `make all` | Instabilidade de rede ao baixar muitas imagens ao mesmo tempo | Timeouts de 300 s; o `make` é idempotente e pode ser repetido |
-
-### O rollback automático: uma demonstração que levou duas tentativas
-
-A primeira tentativa foi **inconclusiva**, e o motivo é instrutivo:
-
-1. O loop de tráfego estava quebrado: o zsh escapou o `;` ao colar a URL (`/\;`). O `curl` passou a chamar `/;` (404) e dois "hosts" inexistentes, e **nenhuma requisição chegou a `/`**.
-2. Sem tráfego de usuário, o canary só recebia as sondas de saúde (`/healthz`, sempre 200). Como a análise foi desenhada para **passar quando não há dados**, ela aprovou 30 vezes, mesmo com `APP_ERROR_RATE=1`.
-3. Um `promote --full` durante o canary **pulou a análise** e levou a versão com erro a 100% do tráfego. Foi preciso reverter pelo Git.
-
-Na segunda tentativa, com o tráfego verificado antes do push (`curl -w "%{http_code}"` mostrando `200` e `500`), o `AnalysisRun` falhou em ~1 a 2 minutos e o Rollout foi abortado sozinho. Aprendizados:
-
-- A análise só reage com **tráfego real** no canary; deve-se iniciar o tráfego **antes** do deploy.
-- `failureLimit: 1` exige **duas** medições ruins (30 s cada), então o abort leva 1 a 2 minutos.
-- Não usar `promote --full` em uma versão sob análise.
-- Uma série de contador só passa a existir no primeiro erro, e o `rate()` precisa de duas amostras para vê-lo.
 
 ## 3. Melhorias para uma versão futura
 

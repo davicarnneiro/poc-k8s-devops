@@ -5,7 +5,6 @@ on:
 
   push:
     branches: [main]
-    tags: ["v*.*.*"]
 
 concurrency:
   group: ci-cd-${{ github.ref }}
@@ -61,15 +60,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Definir tag da imagem (SHA imutavel; semver quando houver tag git)
+      - name: Definir tag da imagem (SHA curto do commit, imutavel)
         id: meta
         run: |
-          SHORT_SHA="${GITHUB_SHA::7}"
-          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            TAG="${GITHUB_REF#refs/tags/}"
-          else
-            TAG="${SHORT_SHA}"
-          fi
+          TAG="${GITHUB_SHA::7}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "Tag de deploy: ${TAG}"
 

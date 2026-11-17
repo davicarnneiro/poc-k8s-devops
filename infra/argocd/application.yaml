@@ -6,6 +6,9 @@ metadata:
 spec:
   project: default
   source:
+    # Se o repositorio for PRIVADO, e preciso cadastra-lo no ArgoCD com um token de leitura
+    # (Settings > Repositories, ou Secret com label argocd.argoproj.io/secret-type=repository).
+    # Veja o README, secao 5.5. Repositorio publico nao precisa de nada.
     repoURL: https://github.com/davicarnneiro/poc-k8s-devops.git
     targetRevision: main
     path: chart/poc-devops-api

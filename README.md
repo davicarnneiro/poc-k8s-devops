@@ -34,7 +34,7 @@ CI/CD, segurança de supply chain, GitOps, deploy canary e observabilidade.
 | Registry | Harbor (com Trivy habilitado) |
 | Aplicação + `/healthz` | FastAPI em `app/` |
 | Dockerfile multi-stage + testes | `app/Dockerfile`, `app/tests/` (pytest) |
-| Chart Helm | `chart/poc-devops-api` (Rollout, Service, Ingress, HPA, ConfigMap, Secret, ServiceMonitor) |
+| Chart Helm | `chart/poc-devops-api` (**Rollout** no lugar do Deployment, pois é ele que permite o canary; Service, Ingress, HPA, ConfigMap, Secret, ServiceMonitor) |
 | CI/CD self-hosted | GitHub Actions + runner local (`.github/workflows/ci-cd.yaml`) |
 | SAST / scan de imagem | SonarQube / Trivy |
 | Métricas e logs | Prometheus + Grafana / Loki + Promtail |
@@ -45,11 +45,11 @@ CI/CD, segurança de supply chain, GitOps, deploy canary e observabilidade.
 
 | Ferramenta | Versão testada |
 |---|---|
-| Docker | 24+ |
+| Docker | 29 (24+ deve servir) |
 | kind | 0.33 |
 | kubectl | 1.31 |
-| helm | 3.x |
-| cosign | 2.x |
+| helm | 4.3 |
+| cosign | **3.x** (testado com 3.1; o pipeline usa flags do cosign 3, como `--new-bundle-format=false`) |
 | make, git, python3 (com `venv`) | — |
 
 Recursos: **~12 GB de RAM livres e 6 CPUs** (SonarQube e Harbor são pesados). Linux.
@@ -156,9 +156,53 @@ make rollouts-cli   # (opcional) plugin 'kubectl argo rollouts' no host, para ve
 Em *Settings → Actions → General → Workflow permissions* escolha **Read and write** (o pipeline faz commit da tag).
 
 **5.4 Runner self-hosted** — *Settings → Actions → Runners → New self-hosted runner* (Linux x64) e siga os comandos exibidos
-(`./config.sh ...` e `./run.sh`). O runner roda na sua máquina e precisa de `docker`, `cosign`, `python3`, `git` e acesso a `harbor.local:8080`/`sonar.local:8080`.
+(`./config.sh ...` e `./run.sh`). O runner roda na sua máquina e precisa de `docker`, `helm`, `cosign` 3.x, `python3` (com `venv`) e `git`, além
+dos hosts `*.local` no `/etc/hosts` (seção 3.1) para alcançar `harbor.local:8080` e `sonar.local:8080`.
 
-**5.5 ArgoCD precisa ler o repositório.** `infra/argocd/application.yaml` aponta para o repositório no GitHub (público). Se for privado, cadastre a credencial em *ArgoCD → Settings → Repositories*. Ajuste `repoURL` para o seu fork, se necessário.
+*Alternativa em container* (a usada nas evidências; o token vem da mesma tela *New self-hosted runner* e vale ~1 h):
+
+```bash
+docker run -d --name github-runner --restart unless-stopped --network host \
+  --add-host harbor.local:127.0.0.1 --add-host sonar.local:127.0.0.1 \
+  -e REPO_URL="https://github.com/SEU_USUARIO/poc-k8s-devops" \
+  -e RUNNER_NAME="local-ubuntu-runner" -e RUNNER_TOKEN="<TOKEN>" -e RUNNER_WORKDIR="/tmp/runner" \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /usr/local/bin/cosign:/usr/local/bin/cosign:ro \
+  -v /usr/local/bin/helm:/usr/local/bin/helm:ro \
+  myoung34/github-runner:latest
+```
+
+O `--add-host` é necessário porque o container tem o próprio `/etc/hosts`. Confira com `docker logs github-runner` (`Listening for Jobs`).
+Esse runner monta o socket do Docker do host, o que equivale a acesso root à máquina: use apenas em ambiente local de testes.
+
+**5.5 Autorizar o ArgoCD a ler o repositório.** O `Application` (`infra/argocd/application.yaml`) aponta para o repositório no GitHub via
+`repoURL`; o ArgoCD é quem faz o `git pull` dele. **Ajuste o `repoURL` para o seu repositório/fork** antes de rodar `make app`.
+
+- **Repositório público:** nada a fazer.
+- **Repositório privado:** é preciso cadastrar uma credencial. Ela vive no cluster, então **precisa ser refeita a cada `make down`**.
+
+  1. Gere um *Personal Access Token* no GitHub (*Settings → Developer settings → Personal access tokens*), com permissão de **leitura** do
+     conteúdo do repositório (fine-grained: *Contents: Read-only*).
+  2. Cadastre-o no ArgoCD, por uma das duas formas:
+
+  *Pela interface* (http://argocd.local:8080, senha em `make credentials`): *Settings → Repositories → Connect Repo* → método **HTTPS**,
+  *Repository URL* igual ao `repoURL`, *Username* o seu usuário do GitHub e *Password* o token.
+
+  *Pelo terminal* (equivalente, fácil de repetir):
+
+  ```bash
+  kubectl create secret generic repo-poc -n argocd \
+    --from-literal=type=git \
+    --from-literal=url=https://github.com/SEU_USUARIO/poc-k8s-devops.git \
+    --from-literal=username=SEU_USUARIO \
+    --from-literal=password=SEU_TOKEN
+  kubectl label secret repo-poc -n argocd argocd.argoproj.io/secret-type=repository
+  ```
+
+  3. Confira: `kubectl get application -n argocd` deve mostrar `Synced`. Se aparecer `Unknown` ou `ComparisonError`
+     (*repository not found / authentication required*), a credencial falta ou está errada.
+
+> O token é um segredo: não o versione. Para quem for avaliar o projeto, o caminho mais simples é deixar o repositório **público**.
 
 ## 6. Executando o pipeline
 
@@ -167,7 +211,7 @@ Faça push na `main` (ou *Actions → CI/CD → Run workflow*). Etapas:
 1. **Lint do chart + testes + SonarQube** — `helm lint`/`helm template`, pytest com cobertura e análise SAST (o pipeline **falha** se o Quality Gate reprovar)
 2. **Build + Trivy** — falha se houver vulnerabilidade CRITICAL/HIGH com correção disponível
 3. **Push + Cosign** — envia ao Harbor e assina o digest
-4. **GitOps** — atualiza `image.tag` no `values.yaml` (tag = SHA curto do commit, **imutável**; se disparar por tag git `vX.Y.Z`, usa a semver)
+4. **GitOps** — atualiza `image.tag` no `values.yaml` (tag = SHA curto do commit, **imutável** e rastreável até o commit)
 
 O ArgoCD detecta o commit e o Argo Rollouts inicia o canary.
 
@@ -264,7 +308,7 @@ kubectl argo rollouts undo poc-devops-api -n poc-app
 | Kyverno: "server gave HTTP response to HTTPS client" | admission controller sem `allowInsecureRegistry`/`hostAliases` ou sem a porta 8080 no Service do ingress | `make kyverno` |
 | Kyverno/kubelet: `UNAUTHORIZED ... action: pull` | projeto `poc-devops` do Harbor está privado | torne o projeto **Public** (seção 5.1) |
 | ReplicaSet não cria pods após corrigir a causa | backoff do controller | `kubectl delete rs -n poc-app -l app.kubernetes.io/name=poc-devops-api` |
-| ArgoCD `Unknown`/`ComparisonError` | repositório privado ou sem internet | seção 5.5 |
+| ArgoCD `Unknown`/`ComparisonError` (*authentication required*) | repositório privado sem credencial cadastrada no ArgoCD (perdida após `make down`), ou sem internet | seção 5.5 |
 | ArgoCD: `no matches for kind "Rollout"` | CRD do Rollouts ausente | `make rollouts` |
 | App `Degraded` logo após instalar | a tag do `values.yaml` ainda não existe no Harbor | rode o pipeline uma vez (seção 6) |
 | HPA `<unknown>` | metrics-server sem `--kubelet-insecure-tls` | `make metrics-server` |
@@ -298,4 +342,11 @@ make down      # remove o cluster
 
 ## 12. Limitações conhecidas (POC)
 
-Credenciais em texto nos values e `Secret` em `values.yaml` (em produção: Sealed Secrets/SOPS/Vault); Harbor sem TLS; um único cluster; sem NetworkPolicy. Detalhes e roadmap em [docs/RELATORIO.md](docs/RELATORIO.md).
+- **Segredos em texto** nos values e `Secret` no `values.yaml` (em produção: Sealed Secrets/SOPS/Vault).
+- **Harbor sem TLS e com projeto público**; a proteção da imagem é a assinatura Cosign exigida pelo Kyverno.
+- O **ArgoCD lê o repositório no GitHub** (única dependência externa, além de baixar imagens); repositório privado exige token (seção 5.5).
+- O runner em container monta o **socket do Docker** do host (equivale a root).
+- **Sem NetworkPolicies**; o Alertmanager está ativo, mas **sem canal de notificação**.
+- A análise do canary **passa quando não há tráfego** e conta as sondas de saúde nas métricas.
+
+Detalhes e roadmap em [docs/RELATORIO.md](docs/RELATORIO.md).
