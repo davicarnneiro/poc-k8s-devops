@@ -23,7 +23,7 @@ LOKI_CHART_VERSION       := 2.10.3
 .PHONY: help all up cluster-create ingress metrics-server rollouts \
         helm-repos platform configure-kind-registry harbor sonarqube \
         kyverno kyverno-registry policies argocd app observability rollouts-cli \
-        credentials status hosts-check smoke-test down
+        credentials status hosts-check smoke-test unsigned-image down
 
 help: ## Lista os alvos
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2}'
@@ -148,8 +148,21 @@ hosts-check: ## Verifica /etc/hosts e insecure-registries
 	done
 	@echo "✅ /etc/hosts ok"
 
+# Publica no Harbor uma imagem REAL e SEM assinatura, usada para provar a politica do Cosign.
+# Credenciais padrao da POC (README); sobrescreva com HARBOR_USER / HARBOR_PASSWORD.
+HARBOR_USER     ?= admin
+HARBOR_PASSWORD ?= Harbor@12345
+UNSIGNED_IMAGE  := harbor.local:8080/poc-devops/nao-assinada:1.0
+
+unsigned-image: ## Publica imagem de teste SEM assinatura no Harbor (usada pelo smoke-test)
+	docker pull -q nginx:1.27-alpine
+	docker tag nginx:1.27-alpine $(UNSIGNED_IMAGE)
+	echo "$(HARBOR_PASSWORD)" | docker login harbor.local:8080 -u "$(HARBOR_USER)" --password-stdin
+	docker push -q $(UNSIGNED_IMAGE)
+
 smoke-test: ## Valida o ambiente de ponta a ponta (app, GitOps, politicas, observabilidade)
 	@pass=0; fail=0; \
+	ovr() { printf '{"spec":{"containers":[{"name":"smoke","image":"%s","resources":{"limits":{"cpu":"100m","memory":"64Mi"}}}]}}' "$$1"; }; \
 	chk() { if eval "$$2" >/dev/null 2>&1; then echo "  ✅ $$1"; pass=$$((pass+1)); else echo "  ❌ $$1"; fail=$$((fail+1)); fi; }; \
 	echo "🔎 Smoke test"; \
 	chk "Nos do cluster Ready (3)"            '[ "$$(kubectl get nodes --no-headers | grep -c " Ready")" = 3 ]'; \
@@ -159,8 +172,8 @@ smoke-test: ## Valida o ambiente de ponta a ponta (app, GitOps, politicas, obser
 	chk "ArgoCD Application Synced/Healthy"   'kubectl get application poc-devops-api -n argocd -o jsonpath="{.status.sync.status}/{.status.health.status}" | grep -q "^Synced/Healthy$$"'; \
 	chk "Rollout Healthy"                     'kubectl get rollout poc-devops-api -n poc-app -o jsonpath="{.status.phase}" | grep -q "^Healthy$$"'; \
 	chk "HPA le a CPU (metrics-server)"       'kubectl get hpa poc-devops-api -n poc-app -o jsonpath="{.status.currentMetrics[0].resource.current.averageUtilization}" | grep -qE "^[0-9]+$$"'; \
-	chk "Kyverno bloqueia imagem :latest"     '! kubectl run smoke --image=nginx:latest -n poc-app --dry-run=server'; \
-	chk "Kyverno bloqueia imagem nao assinada" '! kubectl run smoke --image=harbor.local:8080/poc-devops/nao-assinada:1.0 -n poc-app --dry-run=server'; \
+	chk "Kyverno bloqueia :latest (motivo: tag)" 'kubectl run smoke -n poc-app --dry-run=server --image=nginx:latest --overrides="$$(ovr nginx:latest)" 2>&1 | grep -q "latest"'; \
+	chk "Kyverno bloqueia sem assinatura (motivo: no signatures found; precisa de make unsigned-image)" 'kubectl run smoke -n poc-app --dry-run=server --image=$(UNSIGNED_IMAGE) --overrides="$$(ovr $(UNSIGNED_IMAGE))" 2>&1 | grep -q "no signatures found"'; \
 	chk "Prometheus: target da app UP"        'curl -sf "http://prometheus.local:8080/api/v1/query?query=up%7Bnamespace%3D%22poc-app%22%7D" | grep -q "\"1\"\]"'; \
 	chk "Prometheus: regras PocApp carregadas" 'curl -sf http://prometheus.local:8080/api/v1/rules | grep -q PocAppHighErrorRate'; \
 	chk "Grafana saudavel"                    'curl -sf http://grafana.local:8080/api/health | grep -q "\"database\": \"ok\""'; \

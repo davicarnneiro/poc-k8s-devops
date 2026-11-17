@@ -68,7 +68,7 @@ ingress:
 
 config:
   appEnv: "devops-local"
-  appMessage: "Aplicacao implantada via Helm + ArgoCD!"
+  appMessage: "Versao 2 - teste de rollback manual!"
   # Demo de rollback automatico: fracao (0 a 1) das requisicoes a "/" que retornam 500. Mantenha "0".
   errorRate: "0"
 

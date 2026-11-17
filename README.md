@@ -131,6 +131,7 @@ Para recriar do zero: `make down && make all`.
 make help           # lista todos os alvos
 make status         # nós e pods de todos os namespaces
 make smoke-test     # valida o ambiente de ponta a ponta (13 verificações)
+make unsigned-image # publica no Harbor a imagem de teste SEM assinatura (usada pelo smoke-test e pela evidência do Cosign)
 make rollouts-cli   # (opcional) plugin 'kubectl argo rollouts' no host, para ver o canary ao vivo
 ```
 
@@ -204,7 +205,7 @@ kubectl run load --rm -it --image=busybox:1.36 -n poc-app -- \
 
 **Observabilidade:** Grafana http://grafana.local:8080 (dashboard *POC DevOps API*; *Explore → Loki* para logs) e Prometheus http://prometheus.local:8080 (*Alerts* → `PocAppPodDown`).
 
-**Smoke test:** `make smoke-test` verifica nós, app, métricas, ArgoCD, Rollout, HPA, as duas políticas do Kyverno, Prometheus (target e regras), Grafana e Loki, e retorna erro se algo falhar.
+**Smoke test:** rode antes `make unsigned-image` (uma vez) e depois `make smoke-test`. Ele verifica nós, app, métricas, ArgoCD, Rollout, HPA, as duas políticas do Kyverno (validando a **causa** da negação: `:latest` e `no signatures found`), Prometheus (target e regras), Grafana e Loki, e retorna erro se algo falhar.
 
 ## 8. Rollback
 
