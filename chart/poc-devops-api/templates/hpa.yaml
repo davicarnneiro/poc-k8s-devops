@@ -7,13 +7,8 @@ metadata:
     {{- include "poc-devops-api.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
-    {{- if eq .Values.workload.type "rollout" }}
     apiVersion: argoproj.io/v1alpha1
     kind: Rollout
-    {{- else }}
-    apiVersion: apps/v1
-    kind: Deployment
-    {{- end }}
     name: {{ include "poc-devops-api.fullname" . }}
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}

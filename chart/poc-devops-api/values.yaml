@@ -4,11 +4,6 @@ image:
   tag: "67d9514"
   pullPolicy: IfNotPresent
 
-workload:
-  type: rollout
-  replicas: 1
-  revisionHistoryLimit: 3
-
 deploymentStrategy:
   type: canary
   canary:

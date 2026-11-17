@@ -1,4 +1,4 @@
-{{- if and (eq .Values.workload.type "rollout") .Values.deploymentStrategy.canary.analysis .Values.deploymentStrategy.canary.analysis.enabled }}
+{{- if and .Values.deploymentStrategy.canary.analysis .Values.deploymentStrategy.canary.analysis.enabled }}
 {{- $a := .Values.deploymentStrategy.canary.analysis }}
 {{- $canarySvc := default (printf "%s-canary" (include "poc-devops-api.fullname" .)) .Values.deploymentStrategy.canary.canaryService }}
 {{- $sel := printf "namespace=\"%s\",service=\"%s\"" .Release.Namespace $canarySvc }}
