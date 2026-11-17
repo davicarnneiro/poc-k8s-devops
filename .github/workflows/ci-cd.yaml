@@ -103,15 +103,49 @@ jobs:
           docker push $REGISTRY/$IMAGE_NAME:${{ needs.build-and-scan.outputs.image_tag }}
           docker push $REGISTRY/$IMAGE_NAME:${{ needs.build-and-scan.outputs.sha_tag }}
 
-      - name: Assinar Imagem com Cosign
+      - name: Push Imagem para o Harbor
+        run: |
+          TAG="${{ needs.build-and-scan.outputs.image_tag }}"
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TAG
+
+      - name: Assinar Imagem com Cosign (Formato Classico .sig)
         env:
           COSIGN_PASSWORD: ""
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
         run: |
-          IMAGE_TAG="${{ needs.build-and-scan.outputs.image_tag }}"
-          IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$IMAGE_NAME:$IMAGE_TAG)
-          cosign signing-config create --with-default-services=false > /tmp/signing-config.json
-          cosign sign --yes --signing-config=/tmp/signing-config.json --allow-http-registry --allow-insecure-registry --key env://COSIGN_PRIVATE_KEY "$IMAGE_DIGEST"
+          TAG="${{ needs.build-and-scan.outputs.image_tag }}"
+          IMAGE_REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TAG"
+          
+          # Garante o digest exato da imagem recém-enviada
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE_REF")
+          if [ -z "$DIGEST" ]; then
+            DIGEST="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@$(docker inspect --format='{{.Id}}' "$IMAGE_REF")"
+          fi
+
+          echo "Assinando o digest: $DIGEST"
+
+          # Salva a chave privada temporariamente no runner
+          echo "${COSIGN_PRIVATE_KEY}" > /tmp/cosign.key
+
+          cosign sign --key /tmp/cosign.key \
+            --allow-http-registry \
+            --allow-insecure-registry \
+            --use-signing-config=false \
+            --new-bundle-format=false \
+            --yes \
+            "$DIGEST"
+
+          rm -f /tmp/cosign.key
+
+      # - name: Assinar Imagem com Cosign
+      #   env:
+      #     COSIGN_PASSWORD: ""
+      #     COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+      #   run: |
+      #     IMAGE_TAG="${{ needs.build-and-scan.outputs.image_tag }}"
+      #     IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$IMAGE_NAME:$IMAGE_TAG)
+      #     cosign signing-config create --with-default-services=false > /tmp/signing-config.json
+      #     cosign sign --yes --signing-config=/tmp/signing-config.json --allow-http-registry --allow-insecure-registry --key env://COSIGN_PRIVATE_KEY "$IMAGE_DIGEST"
 
   # 4. Entrega Contínua via GitOps (ArgoCD)
   gitops-deploy:
