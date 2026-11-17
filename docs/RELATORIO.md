@@ -71,7 +71,8 @@ Detalhes: decisões (seção 1), dificuldades (seção 2) e melhorias (seção 3
 
 ## 3. Melhorias para uma versão futura
 
-- **Segredos e TLS:** Sealed Secrets / SOPS / Vault; cert-manager no Harbor e nos ingresses; Harbor privado com `imagePullSecret` e credenciais no Kyverno
+- **Harbor privado:** hoje o projeto é público (leitura anônima, só em `127.0.0.1`) para evitar credenciais de pull. O caminho para torná-lo privado: conta *robot* do Harbor só de leitura, `imagePullSecrets` no chart (segredo criado por um alvo do Makefile, sem versionar a senha) e `credentials` na `ImageValidatingPolicy` do Kyverno (o campo existe na CRD), mantendo a assinatura Cosign como segunda barreira; exige revalidar o ambiente do zero
+- **Segredos e TLS:** Sealed Secrets / SOPS / Vault; cert-manager no Harbor e nos ingresses
 - **Ingress:** substituir o ingress-nginx (aposentado pelo projeto Kubernetes) pela Gateway API
 - **Análise do canary:** excluir as sondas (`/healthz`) das métricas, exigir um tráfego mínimo antes de promover e considerar também logs (Loki)
 - **Alertas:** notificação real no Alertmanager (e-mail/Slack) e SLOs com *burn rate*
