@@ -50,7 +50,7 @@ data:
           "id": 3,
           "targets": [
             {
-              "expr": "sum(rate(http_requests_total{namespace=\"poc-app\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{namespace=\"poc-app\"}[5m]))",
+              "expr": "(sum(rate(http_requests_total{namespace=\"poc-app\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{namespace=\"poc-app\"}[5m]))) or vector(0)",
               "legendFormat": "Taxa Erro 5xx"
             }
           ],
