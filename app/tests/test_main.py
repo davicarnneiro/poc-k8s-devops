@@ -47,3 +47,15 @@ def test_unknown_route_does_not_create_label_per_url():
     body = client.get("/metrics").text
     assert 'path="unmatched",status="404"' in body
     assert "/nao-existe-123" not in body
+
+
+def test_error_rate_one_always_fails(monkeypatch):
+    monkeypatch.setenv("APP_ERROR_RATE", "1")
+    assert client.get("/").status_code == 500
+    # health check nao e afetado
+    assert client.get("/healthz").status_code == 200
+
+
+def test_error_rate_invalid_value_is_ignored(monkeypatch):
+    monkeypatch.setenv("APP_ERROR_RATE", "abc")
+    assert client.get("/").status_code == 200

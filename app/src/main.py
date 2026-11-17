@@ -1,7 +1,8 @@
 import os
+import random
 import time
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
@@ -44,8 +45,19 @@ async def collect_metrics(request: Request, call_next):
         HTTP_LATENCY.labels(request.method, path).observe(time.perf_counter() - start)
 
 
+def _error_rate() -> float:
+    """Fracao (0 a 1) de requisicoes a "/" que falham. Usada so para DEMONSTRAR o rollback automatico."""
+    try:
+        return min(max(float(os.getenv("APP_ERROR_RATE", "0")), 0.0), 1.0)
+    except ValueError:
+        return 0.0
+
+
 @app.get("/")
 def read_root():
+    # Injecao de falha opcional (demo); nao e usada para fins de seguranca
+    if random.random() < _error_rate():  # NOSONAR
+        raise HTTPException(status_code=500, detail="erro simulado (APP_ERROR_RATE)")
     REQUEST_COUNT.labels(endpoint="/", method="GET").inc()
     return {
         "service": "poc-devops-api",
