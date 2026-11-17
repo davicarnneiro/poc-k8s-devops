@@ -68,10 +68,10 @@ spec:
       steps:
         {{- toYaml .Values.deploymentStrategy.canary.steps | nindent 8 }}
       {{- if and .Values.deploymentStrategy.canary.analysis .Values.deploymentStrategy.canary.analysis.enabled }}
+      # Analise em background: roda durante todo o canary (a partir do 1o passo)
       analysis:
+        startingStep: {{ .Values.deploymentStrategy.canary.analysis.startingStep | default 1 }}
         templates:
-          {{- toYaml .Values.deploymentStrategy.canary.analysis.templates | nindent 10 }}
-        args:
-          {{- toYaml .Values.deploymentStrategy.canary.analysis.args | nindent 10 }}
+          - templateName: {{ include "poc-devops-api.fullname" . }}-health
       {{- end }}
 {{- end }}

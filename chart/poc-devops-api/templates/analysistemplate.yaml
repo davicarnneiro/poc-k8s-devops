@@ -1,0 +1,37 @@
+{{- if and (eq .Values.workload.type "rollout") .Values.deploymentStrategy.canary.analysis .Values.deploymentStrategy.canary.analysis.enabled }}
+{{- $a := .Values.deploymentStrategy.canary.analysis }}
+{{- $canarySvc := default (printf "%s-canary" (include "poc-devops-api.fullname" .)) .Values.deploymentStrategy.canary.canaryService }}
+{{- $sel := printf "namespace=\"%s\",service=\"%s\"" .Release.Namespace $canarySvc }}
+# Analise automatica do canary: se alguma metrica falhar, o Argo Rollouts aborta
+# e volta 100% do trafego para a versao estavel (rollback automatico).
+# Sem trafego (resultado vazio/NaN) a analise passa, para nao travar deploys sem carga.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ include "poc-devops-api.fullname" . }}-health
+  labels:
+    {{- include "poc-devops-api.labels" . | nindent 4 }}
+spec:
+  metrics:
+    - name: success-rate
+      interval: {{ $a.interval | default "30s" }}
+      failureLimit: {{ $a.failureLimit | default 1 }}
+      successCondition: len(result) == 0 || isNaN(result[0]) || result[0] >= {{ $a.minSuccessRate | default 0.95 }}
+      provider:
+        prometheus:
+          address: {{ $a.prometheusAddress | quote }}
+          query: |
+            sum(rate(http_requests_total{ {{- $sel -}} ,status!~"5.."}[1m]))
+            /
+            sum(rate(http_requests_total{ {{- $sel -}} }[1m]))
+    - name: latency-p95
+      interval: {{ $a.interval | default "30s" }}
+      failureLimit: {{ $a.failureLimit | default 1 }}
+      successCondition: len(result) == 0 || isNaN(result[0]) || result[0] <= {{ $a.maxP95Seconds | default 0.5 }}
+      provider:
+        prometheus:
+          address: {{ $a.prometheusAddress | quote }}
+          query: |
+            histogram_quantile(0.95,
+              sum(rate(http_request_duration_seconds_bucket{ {{- $sel -}} }[2m])) by (le))
+{{- end }}

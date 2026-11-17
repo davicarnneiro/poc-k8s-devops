@@ -7,3 +7,4 @@ metadata:
 data:
   APP_ENV: {{ .Values.config.appEnv | quote }}
   APP_MESSAGE: {{ .Values.config.appMessage | quote }}
+  APP_ERROR_RATE: {{ .Values.config.errorRate | default "0" | quote }}

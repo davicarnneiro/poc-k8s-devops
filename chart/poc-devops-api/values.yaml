@@ -16,6 +16,15 @@ deploymentStrategy:
     canaryService: "poc-devops-api-canary"
     maxSurge: 1
     maxUnavailable: 0
+    # Rollback automatico: aborta o canary se erro 5xx > 5% ou latencia P95 > 0.5s
+    analysis:
+      enabled: true
+      startingStep: 1
+      interval: 30s
+      failureLimit: 1
+      minSuccessRate: 0.95
+      maxP95Seconds: 0.5
+      prometheusAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
     steps:
       - setWeight: 10
       - pause:
@@ -60,6 +69,8 @@ ingress:
 config:
   appEnv: "devops-local"
   appMessage: "Aplicacao implantada via Helm + ArgoCD!"
+  # Demo de rollback automatico: fracao (0 a 1) das requisicoes a "/" que retornam 500. Mantenha "0".
+  errorRate: "0"
 
 secret:
   apiToken: "token-secreto-poc-2026"
