@@ -3,7 +3,7 @@ replicaCount: 1
 
 image:
   repository: harbor.local:8080/poc-devops/poc-devops-api
-  tag: "9fd509b"
+  tag: "v1.0.0"
   pullPolicy: IfNotPresent
 
 workload:
