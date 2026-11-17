@@ -7,7 +7,7 @@ metadata:
     {{- include "poc-devops-api.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.workload.replicas | default .Values.replicaCount }}
+  replicas: {{ .Values.workload.replicas }}
   {{- end }}
   revisionHistoryLimit: {{ .Values.workload.revisionHistoryLimit | default 3 }}
   selector:
@@ -17,6 +17,10 @@ spec:
     metadata:
       labels:
         {{- include "poc-devops-api.selectorLabels" . | nindent 8 }}
+      annotations:
+        # Reinicia os pods quando ConfigMap/Secret mudam
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -31,6 +35,11 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "poc-devops-api.fullname" . }}-config
+            - secretRef:
+                name: {{ include "poc-devops-api.fullname" . }}-secret
           ports:
             {{- toYaml .Values.container.ports | nindent 12 }}
           livenessProbe:

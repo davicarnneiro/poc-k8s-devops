@@ -1,15 +1,4 @@
 {{- if .Values.ingress.enabled }}
-{{- $fullname := include "poc-devops-api.fullname" . -}}
-{{- $serviceName := $fullname -}}
-{{- if and
-      (eq .Values.workload.type "rollout")
-      (eq .Values.deploymentStrategy.type "canary")
-}}
-  {{- $serviceName = default
-        (printf "%s-active" $fullname)
-        .Values.deploymentStrategy.canary.activeService
-  -}}
-{{- end }}
 
 apiVersion: networking.k8s.io/v1
 kind: Ingress

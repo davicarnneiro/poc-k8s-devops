@@ -1,6 +1,4 @@
 fullnameOverride: poc-devops-api
-replicaCount: 1
-
 image:
   repository: harbor.local:8080/poc-devops/poc-devops-api
   tag: "v1.0.0"
@@ -9,6 +7,7 @@ image:
 workload:
   type: rollout
   replicas: 1
+  revisionHistoryLimit: 3
 
 deploymentStrategy:
   type: canary
@@ -50,16 +49,6 @@ service:
       port: 80
       targetPort: http
       protocol: TCP
-
-serviceMonitor:
-  enabled: true
-  labels:
-    release: kube-prometheus-stack
-  endpoints:
-    - port: http
-      path: /metrics
-      interval: 30s
-      scheme: http
 
 ingress:
   enabled: true
