@@ -77,7 +77,6 @@ jobs:
       - name: Build da Imagem Docker Multi-Stage
         run: |
           docker build \
-            --build-arg APP_VERSION=${{ steps.meta.outputs.semver }} \
             -t $REGISTRY/$IMAGE_NAME:${{ steps.meta.outputs.semver }} \
             -t $REGISTRY/$IMAGE_NAME:${{ steps.meta.outputs.sha }} \
             ./app
