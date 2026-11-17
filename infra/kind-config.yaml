@@ -13,12 +13,16 @@ nodes:
         nodeRegistration:
           kubeletExtraArgs:
             node-labels: "ingress-ready=true"
+    # Portas publicadas SOMENTE em localhost: sem isso o kind escuta em 0.0.0.0 e os servicos
+    # (Harbor, ArgoCD, Grafana...) ficariam acessiveis a qualquer maquina da rede local.
     extraPortMappings:
       - containerPort: 80
         hostPort: 8080
+        listenAddress: "127.0.0.1"
         protocol: TCP
       - containerPort: 443
         hostPort: 8443
+        listenAddress: "127.0.0.1"
         protocol: TCP
   - role: worker
   - role: worker

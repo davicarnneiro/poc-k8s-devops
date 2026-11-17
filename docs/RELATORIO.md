@@ -22,7 +22,7 @@ Detalhes: decisões (seção 1), dificuldades (seção 2) e melhorias (seção 3
 | **Trivy antes do push** | Imagem vulnerável nunca chega ao registry |
 | **SonarQube com Quality Gate bloqueante** | O pipeline falha se o gate reprovar (cobertura de código e issues no código novo) |
 | **Cosign por digest + Kyverno `ImageValidatingPolicy`** | Garante que só imagens geradas pelo pipeline rodam no cluster |
-| **Projeto Harbor público + assinatura obrigatória** | Evita credenciais de pull no Kyverno e nos nós; a segurança fica na assinatura exigida na admissão |
+| **Projeto Harbor público + assinatura obrigatória** | Evita credenciais de pull no Kyverno e nos nós. "Público" aqui é só leitura anônima, num Harbor local cujas portas são publicadas apenas em `127.0.0.1` (`listenAddress` no kind); a segurança fica na assinatura exigida na admissão |
 | **GitOps (ArgoCD)** | O pipeline não acessa o cluster; ele apenas altera o Git (estado desejado), com `selfHeal` e auditoria |
 | **Argo Rollouts (canary) + AnalysisTemplate** | Entrega progressiva 10→25→50→100% via Ingress NGINX, com análise no Prometheus (sucesso ≥ 95%, P95 ≤ 500 ms) e **rollback automático** |
 | **HPA controla as réplicas (`minReplicas: 2`)** | O chart não define `replicas` para não disputar com o HPA; 2 réplicas dão redundância durante o canary |

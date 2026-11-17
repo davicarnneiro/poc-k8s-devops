@@ -56,10 +56,17 @@ Recursos: **~12 GB de RAM livres e 6 CPUs** (SonarQube e Harbor são pesados). L
 
 ## 3. Preparação da máquina (uma vez)
 
-**3.1 `/etc/hosts`** — todos os serviços usam `*.local` na porta 8080:
+**3.1 `/etc/hosts`** — todos os serviços usam `*.local` na porta 8080. Esse passo é **necessário nesta configuração**: todos compartilham a mesma porta e o Ingress NGINX escolhe o serviço pelo **nome do host** (`http://localhost:8080` devolve 404). O nome `harbor.local:8080` também faz parte do endereço das imagens, usado pelo `docker push`, pela assinatura do Cosign e pela política do Kyverno.
 
 ```
 127.0.0.1 harbor.local sonar.local argocd.local grafana.local prometheus.local app.local
+```
+
+Para adicionar (só se ainda não existir) e conferir:
+
+```bash
+grep -q "harbor.local" /etc/hosts || echo "127.0.0.1 harbor.local sonar.local argocd.local grafana.local prometheus.local app.local" | sudo tee -a /etc/hosts
+make hosts-check     # confirma que os 6 nomes estão resolvendo
 ```
 
 **3.2 Docker aceitar o Harbor sem TLS** — `/etc/docker/daemon.json`:
@@ -131,7 +138,8 @@ Para recriar do zero: `make down && make all`.
 make help           # lista todos os alvos
 make status         # nós e pods de todos os namespaces
 make smoke-test     # valida o ambiente de ponta a ponta (13 verificações)
-make unsigned-image # publica no Harbor a imagem de teste SEM assinatura (usada pelo smoke-test e pela evidência do Cosign)
+make harbor-project # cria o projeto poc-devops (público) no Harbor; idempotente
+make unsigned-image # publica no Harbor a imagem de teste SEM assinatura (usada pelo smoke-test e pela evidência do Cosign; já cria o projeto)
 make rollouts-cli   # (opcional) plugin 'kubectl argo rollouts' no host, para ver o canary ao vivo
 ```
 
@@ -141,7 +149,7 @@ make rollouts-cli   # (opcional) plugin 'kubectl argo rollouts' no host, para ve
 
 ## 5. Configurando o CI/CD (uma vez)
 
-**5.1 Harbor** — acesse http://harbor.local:8080 (`admin` / `Harbor@12345`) → *Projects → New Project* → nome `poc-devops`, marcando **Access Level: Public**. (Projeto privado exigiria `imagePullSecret` e credenciais no Kyverno; para a POC usamos público, e a segurança fica por conta da assinatura Cosign exigida pelo Kyverno.)
+**5.1 Harbor** — crie o projeto `poc-devops` **público** com `make harbor-project` (idempotente; aguarde o Harbor ficar pronto, `kubectl get pods -n harbor`). Pela interface: http://harbor.local:8080 (`admin` / `Harbor@12345`) → *Projects → New Project* → nome `poc-devops`, marcando **Access Level: Public**. (Projeto privado exigiria `imagePullSecret` e credenciais no Kyverno; para a POC usamos público, e a segurança fica por conta da assinatura Cosign exigida pelo Kyverno.)
 
 **5.2 SonarQube** — http://sonar.local:8080 (`admin`/`admin`, troque a senha) → *My Account → Security → Generate Token*.
 
@@ -307,6 +315,7 @@ kubectl argo rollouts undo poc-devops-api -n poc-app
 | Pod negado: "imagem deve estar assinada" | imagem não assinada, ou `cosign.pub` da política difere da chave usada | rode o pipeline completo; confira a chave em `verify-image-signature.yaml` |
 | Kyverno: "server gave HTTP response to HTTPS client" | admission controller sem `allowInsecureRegistry`/`hostAliases` ou sem a porta 8080 no Service do ingress | `make kyverno` |
 | Kyverno/kubelet: `UNAUTHORIZED ... action: pull` | projeto `poc-devops` do Harbor está privado | torne o projeto **Public** (seção 5.1) |
+| Kyverno: `UNAUTHORIZED: project poc-devops not found` | o Harbor recriado ainda não tem o projeto | `make harbor-project` (seção 5.1) |
 | ReplicaSet não cria pods após corrigir a causa | backoff do controller | `kubectl delete rs -n poc-app -l app.kubernetes.io/name=poc-devops-api` |
 | ArgoCD `Unknown`/`ComparisonError` (*authentication required*) | repositório privado sem credencial cadastrada no ArgoCD (perdida após `make down`), ou sem internet | seção 5.5 |
 | ArgoCD: `no matches for kind "Rollout"` | CRD do Rollouts ausente | `make rollouts` |
@@ -343,7 +352,7 @@ make down      # remove o cluster
 ## 12. Limitações conhecidas (POC)
 
 - **Segredos em texto** nos values e `Secret` no `values.yaml` (em produção: Sealed Secrets/SOPS/Vault).
-- **Harbor sem TLS e com projeto público**; a proteção da imagem é a assinatura Cosign exigida pelo Kyverno.
+- **Harbor sem TLS e com projeto público** (leitura anônima, sem escrita); a proteção da imagem é a assinatura Cosign exigida pelo Kyverno. As portas do ingress (8080/8443) são publicadas **só em `127.0.0.1`**, então os serviços não ficam acessíveis pela rede local.
 - O **ArgoCD lê o repositório no GitHub** (única dependência externa, além de baixar imagens); repositório privado exige token (seção 5.5).
 - O runner em container monta o **socket do Docker** do host (equivale a root).
 - **Sem NetworkPolicies**; o Alertmanager está ativo, mas **sem canal de notificação**.

@@ -23,7 +23,7 @@ LOKI_CHART_VERSION       := 2.10.3
 .PHONY: help all up cluster-create ingress metrics-server rollouts \
         helm-repos platform configure-kind-registry harbor sonarqube \
         kyverno kyverno-registry policies argocd app observability rollouts-cli \
-        credentials status hosts-check smoke-test unsigned-image down
+        credentials status hosts-check harbor-project smoke-test unsigned-image down
 
 help: ## Lista os alvos
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2}'
@@ -148,13 +148,28 @@ hosts-check: ## Verifica /etc/hosts e insecure-registries
 	done
 	@echo "✅ /etc/hosts ok"
 
-# Publica no Harbor uma imagem REAL e SEM assinatura, usada para provar a politica do Cosign.
 # Credenciais padrao da POC (README); sobrescreva com HARBOR_USER / HARBOR_PASSWORD.
 HARBOR_USER     ?= admin
 HARBOR_PASSWORD ?= Harbor@12345
+HARBOR_URL      ?= http://harbor.local:8080
 UNSIGNED_IMAGE  := harbor.local:8080/poc-devops/nao-assinada:1.0
 
-unsigned-image: ## Publica imagem de teste SEM assinatura no Harbor (usada pelo smoke-test)
+# Cria o projeto 'poc-devops' (PUBLICO) no Harbor. Idempotente: se ja existe, apenas garante que esta publico.
+# Projeto publico evita credenciais de pull no Kyverno e nos nos (README, secao 5.1).
+harbor-project: ## Cria o projeto poc-devops (publico) no Harbor
+	@code=$$(curl -s -o /dev/null -w '%{http_code}' -u "$(HARBOR_USER):$(HARBOR_PASSWORD)" -X POST $(HARBOR_URL)/api/v2.0/projects \
+		-H 'Content-Type: application/json' -d '{"project_name":"poc-devops","metadata":{"public":"true"}}'); \
+	case "$$code" in \
+		201) echo "✅ Projeto poc-devops criado (publico)";; \
+		409) curl -sf -o /dev/null -u "$(HARBOR_USER):$(HARBOR_PASSWORD)" -X PUT $(HARBOR_URL)/api/v2.0/projects/poc-devops \
+			-H 'Content-Type: application/json' -d '{"metadata":{"public":"true"}}' \
+			&& echo "✅ Projeto poc-devops ja existe (garantido como publico)";; \
+		401) echo "❌ Harbor recusou as credenciais (HARBOR_USER/HARBOR_PASSWORD)"; exit 1;; \
+		*)   echo "❌ Falha ao criar o projeto (HTTP $$code). O Harbor ja esta pronto? Veja: kubectl get pods -n harbor"; exit 1;; \
+	esac
+
+# Publica no Harbor uma imagem REAL e SEM assinatura, usada para provar a politica do Cosign.
+unsigned-image: harbor-project ## Publica imagem de teste SEM assinatura no Harbor (usada pelo smoke-test)
 	docker pull -q nginx:1.27-alpine
 	docker tag nginx:1.27-alpine $(UNSIGNED_IMAGE)
 	echo "$(HARBOR_PASSWORD)" | docker login harbor.local:8080 -u "$(HARBOR_USER)" --password-stdin
