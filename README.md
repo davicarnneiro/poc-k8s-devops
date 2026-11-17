@@ -167,10 +167,10 @@ Em *Settings → Actions → General → Workflow permissions* escolha **Read an
 (`./config.sh ...` e `./run.sh`). O runner roda na sua máquina e precisa de `docker`, `helm`, `cosign` 3.x, `python3` (com `venv`) e `git`, além
 dos hosts `*.local` no `/etc/hosts` (seção 3.1) para alcançar `harbor.local:8080` e `sonar.local:8080`.
 
-*Alternativa em container* (a usada nas evidências; o token vem da mesma tela *New self-hosted runner* e vale ~1 h):
+*Alternativa em container* (a usada nas evidências; o token vem da mesma tela *New self-hosted runner*, vale ~1 h e **só serve para registrar** o runner):
 
 ```bash
-docker run -d --name github-runner --restart unless-stopped --network host \
+docker run -d --name github-runner --network host \
   --add-host harbor.local:127.0.0.1 --add-host sonar.local:127.0.0.1 \
   -e REPO_URL="https://github.com/SEU_USUARIO/poc-k8s-devops" \
   -e RUNNER_NAME="local-ubuntu-runner" -e RUNNER_TOKEN="<TOKEN>" -e RUNNER_WORKDIR="/tmp/runner" \
@@ -181,6 +181,12 @@ docker run -d --name github-runner --restart unless-stopped --network host \
 ```
 
 O `--add-host` é necessário porque o container tem o próprio `/etc/hosts`. Confira com `docker logs github-runner` (`Listening for Jobs`).
+
+> ⚠️ **Sem `--restart`, de propósito.** A cada início o container se registra de novo com o `RUNNER_TOKEN`; como o token expira em ~1 h, um reinício
+> automático (reboot da máquina, reinício do Docker) faria o registro falhar com **404** e o container ficaria em laço de reinícios. Se ele parar,
+> **recrie** com um token novo: `docker rm -f github-runner` e o `docker run` acima. Ao terminar de usar, remova o container e a entrada do runner em
+> *Settings → Actions → Runners*.
+
 Esse runner monta o socket do Docker do host, o que equivale a acesso root à máquina: use apenas em ambiente local de testes.
 
 **5.5 Autorizar o ArgoCD a ler o repositório.** O `Application` (`infra/argocd/application.yaml`) aponta para o repositório no GitHub via
@@ -323,6 +329,7 @@ kubectl argo rollouts undo poc-devops-api -n poc-app
 | HPA `<unknown>` | metrics-server sem `--kubelet-insecure-tls` | `make metrics-server` |
 | Sonar: "Not authorized" | `SONAR_TOKEN` ausente/errado | seção 5.2/5.3 |
 | Pipeline falha no `git push` (403) | permissão de escrita do workflow | seção 5.3 |
+| Runner em container reiniciando sem parar (`runner-registration` → 404) | o `RUNNER_TOKEN` expirou (vale ~1 h) e o container tenta se registrar de novo | `docker rm -f github-runner` e recrie com um token novo (seção 5.4) |
 | `make all` para em `hosts-check` | faltam entradas no `/etc/hosts` | seção 3.1 |
 | Pods `Pending` | falta de memória | feche apps; reduza `jvmOpts` do SonarQube |
 
