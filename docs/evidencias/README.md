@@ -1,7 +1,6 @@
 # Evidências
 
 Prints e saídas de comandos que comprovam o funcionamento da POC. Cada item diz **o que a imagem mostra** e **o que ela prova**.
-Os itens marcados com `[ ]` ainda não têm evidência salva.
 
 ## Mapa: critérios do desafio → evidências
 
@@ -19,23 +18,23 @@ Os itens marcados com `[ ]` ainda não têm evidência salva.
 
 | # | Evidência | Arquivo | Feito |
 |---|---|---|---|
-| 1 | Cluster e pods | 01-cluster.png | [x] |
-| 2 | Pipeline com 4 jobs verdes | 02-pipeline.png (+ 02-pipeline-runner.png) | [x] |
-| 3 | SonarQube: Quality Gate | 03-sonarqube.png | [x] |
-| 4 | Trivy: scan da imagem | 04-trivy.png | [x] |
-| 5 | Harbor: imagem assinada | 05-harbor.png | [x] |
-| 6 | ArgoCD: Synced/Healthy | 06-argocd.png | [x] |
-| 7 | Canary concluído | 07-canary.png | [x] |
-| 8 | Aplicação respondendo | 08-app.png | [x] |
-| 9 | Kyverno bloqueia `:latest` | 09-kyverno-latest.png | [x] |
-| 10 | Kyverno bloqueia imagem não assinada | 10-kyverno-cosign.png | [x] |
-| 11 | Dashboard Grafana | 11-grafana.png | [x] |
-| 12 | Logs no Loki | 12-loki.png | [x] |
-| 13 | Regras de alerta no Prometheus | 13-alerta.png | [x] |
-| 14 | HPA escalando | 14-hpa.png | [x] |
-| 15 | Rollback manual | 15-rollback.png | [x] |
-| 16 | Rollback **automático** | 16-rollback-automatico.png (+ 16b, 16c) | [x] |
-| 17 | Smoke test 13/13 | 17-smoke-test.txt | [x] |
+| 1 | Cluster e pods | 01-cluster.png | ✅ |
+| 2 | Pipeline com 4 jobs verdes | 02-pipeline.png (+ 02-pipeline-runner.png) | ✅ |
+| 3 | SonarQube: Quality Gate | 03-sonarqube.png | ✅ |
+| 4 | Trivy: scan da imagem | 04-trivy.png | ✅ |
+| 5 | Harbor: imagem assinada | 05-harbor.png | ✅ |
+| 6 | ArgoCD: Synced/Healthy | 06-argocd.png | ✅ |
+| 7 | Canary concluído | 07-canary.png | ✅ |
+| 8 | Aplicação respondendo | 08-app.png | ✅ |
+| 9 | Kyverno bloqueia `:latest` | 09-kyverno-latest.png | ✅ |
+| 10 | Kyverno bloqueia imagem não assinada | 10-kyverno-cosign.png | ✅ |
+| 11 | Dashboard Grafana | 11-grafana.png | ✅ |
+| 12 | Logs no Loki | 12-loki.png | ✅ |
+| 13 | Regras de alerta no Prometheus | 13-alerta.png | ✅ |
+| 14 | HPA escalando | 14-hpa.png | ✅ |
+| 15 | Rollback manual | 15-rollback.png | ✅ |
+| 16 | Rollback **automático** | 16-rollback-automatico.png (+ 16b, 16c) | ✅ |
+| 17 | Smoke test 13/13 | 17-smoke-test.txt | ✅ |
 
 ---
 
