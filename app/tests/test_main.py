@@ -59,3 +59,14 @@ def test_error_rate_one_always_fails(monkeypatch):
 def test_error_rate_invalid_value_is_ignored(monkeypatch):
     monkeypatch.setenv("APP_ERROR_RATE", "abc")
     assert client.get("/").status_code == 200
+
+
+def test_error_rate_zero_never_fails(monkeypatch):
+    monkeypatch.setenv("APP_ERROR_RATE", "0")
+    assert all(client.get("/").status_code == 200 for _ in range(10))
+
+
+def test_error_rate_is_deterministic_fraction(monkeypatch):
+    monkeypatch.setenv("APP_ERROR_RATE", "0.5")
+    codes = [client.get("/").status_code for _ in range(10)]
+    assert codes.count(500) == 5

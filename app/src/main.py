@@ -1,5 +1,5 @@
+import itertools
 import os
-import random
 import time
 
 from fastapi import FastAPI, HTTPException, Request
@@ -45,6 +45,9 @@ async def collect_metrics(request: Request, call_next):
         HTTP_LATENCY.labels(request.method, path).observe(time.perf_counter() - start)
 
 
+_REQUEST_SEQ = itertools.count(1)
+
+
 def _error_rate() -> float:
     """Fracao (0 a 1) de requisicoes a "/" que falham. Usada so para DEMONSTRAR o rollback automatico."""
     try:
@@ -53,10 +56,16 @@ def _error_rate() -> float:
         return 0.0
 
 
+def _should_fail() -> bool:
+    """Decisao deterministica (sem aleatoriedade): com taxa 0.5 falha 1 a cada 2 requisicoes, etc."""
+    rate = _error_rate()
+    n = next(_REQUEST_SEQ)
+    return int(n * rate) > int((n - 1) * rate)
+
+
 @app.get("/")
 def read_root():
-    # Injecao de falha opcional (demo); nao e usada para fins de seguranca
-    if random.random() < _error_rate():  # NOSONAR
+    if _should_fail():
         raise HTTPException(status_code=500, detail="erro simulado (APP_ERROR_RATE)")
     REQUEST_COUNT.labels(endpoint="/", method="GET").inc()
     return {
