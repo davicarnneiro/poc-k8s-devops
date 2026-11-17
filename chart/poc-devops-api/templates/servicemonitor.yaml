@@ -3,12 +3,17 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: {{ include "poc-devops-api.fullname" . }}
-  {{- with .Values.serviceMonitor.namespace }}
-  namespace: {{ . }}
-  {{- end }}
-  labels: {{- toYaml .Values.serviceMonitor.labels | nindent 4 }}
+  labels:
+    {{- include "poc-devops-api.labels" . | nindent 4 }}
 spec:
   selector:
-    matchLabels: {{- include "poc-devops-api.selectorLabels" . | nindent 6 }}
-  endpoints: {{- toYaml .Values.serviceMonitor.endpoints | nindent 4 }}
+    matchLabels:
+      {{- include "poc-devops-api.selectorLabels" . | nindent 6 }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: {{ .Values.serviceMonitor.portName | default "http" }}
+      path: {{ .Values.serviceMonitor.path | default "/metrics" }}
+      interval: {{ .Values.serviceMonitor.interval | default "15s" }}
 {{- end }}

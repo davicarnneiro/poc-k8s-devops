@@ -3,9 +3,7 @@ name: CI/CD Pipeline - POC Kubernetes Local
 on:
   push:
     branches: [main]
-    paths:
-      - 'app/**'
-      - '.github/workflows/**'
+    tags: ["v*.*.*"]
 
 env:
   REGISTRY: harbor.local:8080
@@ -38,27 +36,55 @@ jobs:
 
   # 2. Build Multi-Stage e Scan de Segurança (Trivy)
   build-and-scan:
-    name: 2. Docker Build & Trivy Scan
+    name: 2. Build & Trivy Scan
     runs-on: self-hosted
     needs: test-and-sast
+    permissions:
+      contents: read
+      packages: write
     outputs:
-      image_tag: ${{ steps.meta.outputs.tag }}
+      image_tag: ${{ steps.meta.outputs.semver }}
+      sha_tag: ${{ steps.meta.outputs.sha }}
     steps:
-      - name: Checkout do codigo
+      - name: Checkout do codigo (historico completo para SemVer)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Definir Tag Imutavel (Commit SHA)
+      - name: Definir Tag Semantica (SemVer) e Commit SHA
         id: meta
-        run: echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            SEMVER="${GITHUB_REF#refs/tags/}"
+          else
+            LAST_TAG=$(git tag --list "v*.*.*" --sort=-v:refname | head -n 1)
+            if [[ -z "$LAST_TAG" ]]; then
+              SEMVER="v1.0.0"
+            else
+              VERSION="${LAST_TAG#v}"
+              IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+              NEXT_PATCH=$((PATCH + 1))
+              SEMVER="v${MAJOR}.${MINOR}.${NEXT_PATCH}"
+            fi
+          fi
+
+          echo "semver=${SEMVER}" >> $GITHUB_OUTPUT
+          echo "sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "Versao SemVer definida: ${SEMVER} | Commit SHA: ${SHORT_SHA}"
 
       - name: Build da Imagem Docker Multi-Stage
         run: |
-          docker build -t $REGISTRY/$IMAGE_NAME:${{ steps.meta.outputs.tag }} ./app
+          docker build \
+            -t $REGISTRY/$IMAGE_NAME:${{ steps.meta.outputs.semver }} \
+            -t $REGISTRY/$IMAGE_NAME:${{ steps.meta.outputs.sha }} \
+            ./app
 
       - name: Scan de Vulnerabilidades com Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}'
+          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.semver }}'
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
@@ -75,6 +101,7 @@ jobs:
         run: |
           echo "${{ secrets.HARBOR_PASSWORD }}" | docker login $REGISTRY -u "${{ secrets.HARBOR_USER }}" --password-stdin
           docker push $REGISTRY/$IMAGE_NAME:${{ needs.build-and-scan.outputs.image_tag }}
+          docker push $REGISTRY/$IMAGE_NAME:${{ needs.build-and-scan.outputs.sha_tag }}
 
       - name: Assinar Imagem com Cosign
         env:
@@ -84,7 +111,13 @@ jobs:
           IMAGE_TAG="${{ needs.build-and-scan.outputs.image_tag }}"
           IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$IMAGE_NAME:$IMAGE_TAG)
           cosign signing-config create --with-default-services=false > /tmp/signing-config.json
-          cosign sign --yes --signing-config=/tmp/signing-config.json --allow-http-registry --allow-insecure-registry --key env://COSIGN_PRIVATE_KEY "$IMAGE_DIGEST"
+          cosign sign --yes \
+            --signing-config=/tmp/signing-config.json \
+            --allow-http-registry \
+            --allow-insecure-registry \
+            --new-bundle-format=false \
+            --key env://COSIGN_PRIVATE_KEY \
+            "$IMAGE_DIGEST"
 
   # 4. Entrega Contínua via GitOps (ArgoCD)
   gitops-deploy:
@@ -96,8 +129,10 @@ jobs:
     steps:
       - name: Checkout do repositorio
         uses: actions/checkout@v4
+        with:
+          ref: main
 
-      - name: Atualizar Tag no Chart Helm
+      - name: Atualizar Tag SemVer no Chart Helm
         run: |
           IMAGE_TAG="${{ needs.build-and-scan.outputs.image_tag }}"
           sed -i "s/tag: .*/tag: \"$IMAGE_TAG\"/" chart/poc-devops-api/values.yaml
@@ -105,4 +140,4 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add chart/poc-devops-api/values.yaml
           git commit -m "chore(cd): update image tag to $IMAGE_TAG [skip ci]"
-          git push
+          git push origin main

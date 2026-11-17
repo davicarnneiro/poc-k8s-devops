@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-poc-devops-api
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  poc-devops-api.json: |-
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "reqps" } },
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+          "id": 1,
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{namespace=\"poc-app\"}[1m])) or sum(rate(starlette_requests_total{namespace=\"poc-app\"}[1m]))",
+              "legendFormat": "Total RPS"
+            }
+          ],
+          "title": "Taxa de Requisições (RPS)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "s" } },
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+          "id": 2,
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace=\"poc-app\"}[5m])) by (le))",
+              "legendFormat": "Latência P95"
+            }
+          ],
+          "title": "Latência P95 (Segundos)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "percentunit" } },
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+          "id": 3,
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{namespace=\"poc-app\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{namespace=\"poc-app\"}[5m]))",
+              "legendFormat": "Taxa Erro 5xx"
+            }
+          ],
+          "title": "Taxa de Erros HTTP 5xx",
+          "type": "stat"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "cores" } },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "id": 4,
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"poc-app\",container!=\"\"}[2m])) by (pod)",
+              "legendFormat": "{{pod}}"
+            }
+          ],
+          "title": "Consumo de CPU por Pod (poc-app)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "bytes" } },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "id": 5,
+          "targets": [
+            {
+              "expr": "sum(container_memory_working_set_bytes{namespace=\"poc-app\",container!=\"\"}) by (pod)",
+              "legendFormat": "{{pod}}"
+            }
+          ],
+          "title": "Consumo de Memória Working Set por Pod (poc-app)",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 39,
+      "style": "dark",
+      "tags": ["poc-devops", "kubernetes", "api"],
+      "templating": { "list": [] },
+      "time": { "from": "now-30m", "to": "now" },
+      "title": "POC DevOps API - Golden Signals & Resources",
+      "uid": "poc-devops-api-overview"
+    }
