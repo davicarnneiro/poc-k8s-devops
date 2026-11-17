@@ -20,7 +20,7 @@ spec:
   matchImageReferences:
     - glob: "harbor.local:8080/poc-devops/*"
   attestors:
-    - name: cosign-key
+    - name: cosign
       cosign:
         key:
           data: |-
@@ -30,5 +30,5 @@ spec:
             -----END PUBLIC KEY-----
   validations:
     - expression: >
-        images.containers.map(image, verifyImageSignatures(image, [attestors.cosign-key]) > 0).all(e, e)
+        images.containers.map(image, verifyImageSignatures(image, [attestors.cosign]) > 0).all(e, e)
       message: "A imagem deve estar assinada com a chave oficial do Cosign."

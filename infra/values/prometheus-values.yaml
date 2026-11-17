@@ -1,5 +1,14 @@
+defaultRules:
+  create: true
+  rules:
+    etcd: false
+    kubeSchedulerAlerting: false
+    kubeControllerManager: false
+
 grafana:
-  adminPassword: "admin"
+  enabled: true
+  adminUser: admin
+  adminPassword: "admin"   # POC local - nao usar em producao
   ingress:
     enabled: true
     ingressClassName: nginx
@@ -7,30 +16,45 @@ grafana:
       - grafana.local
     path: /
     pathType: Prefix
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
   resources:
     requests:
       cpu: 100m
       memory: 128Mi
-  additionalDataSources:
-    - name: Loki
-      type: loki
-      url: http://loki.monitoring.svc.cluster.local:3100
-      access: proxy
-      isDefault: false
+    limits:
+      cpu: 300m
+      memory: 512Mi
 
 prometheus:
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - prometheus.local
+    paths:
+      - /
+    pathType: Prefix
   prometheusSpec:
-    serviceMonitorSelectorNilUsesHelmValues: false
     retention: 2d
+    scrapeInterval: 15s
+    evaluationInterval: 15s
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
     resources:
       requests:
         cpu: 150m
         memory: 384Mi
       limits:
         cpu: 500m
-        memory: 768Mi
+        memory: 1Gi
 
 alertmanager:
+  enabled: true
   alertmanagerSpec:
     resources:
       requests:
@@ -48,5 +72,35 @@ additionalPrometheusRulesMap:
             labels:
               severity: critical
             annotations:
-              summary: "Instancia da aplicacao poc-devops-api fora do ar"
+              summary: "Instancia da poc-devops-api fora do ar"
               description: "O endpoint /metrics da poc-devops-api nao responde ha mais de 1 minuto."
+          - alert: PocAppHighErrorRate
+            expr: |
+              sum(rate(http_requests_total{namespace="poc-app",status=~"5.."}[2m]))
+                / sum(rate(http_requests_total{namespace="poc-app"}[2m])) > 0.05
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Taxa de erro 5xx acima de 5% na poc-devops-api"
+              description: "Mais de 5% das requisicoes retornam 5xx ha mais de 2 minutos."
+          - alert: PocAppHighLatencyP95
+            expr: |
+              histogram_quantile(0.95,
+                sum(rate(http_request_duration_seconds_bucket{namespace="poc-app"}[5m])) by (le)) > 0.5
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Latencia P95 acima de 500ms na poc-devops-api"
+              description: "O P95 das requisicoes esta acima de 0.5s ha mais de 5 minutos."
+          - alert: PocAppHpaMaxedOut
+            expr: |
+              kube_horizontalpodautoscaler_status_current_replicas{namespace="poc-app"}
+                == kube_horizontalpodautoscaler_spec_max_replicas{namespace="poc-app"}
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "HPA da poc-devops-api no limite maximo de replicas"
+              description: "O HPA esta no maximo de replicas ha mais de 5 minutos; considere aumentar maxReplicas."

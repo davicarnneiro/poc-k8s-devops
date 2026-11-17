@@ -22,7 +22,7 @@ data:
           "id": 1,
           "targets": [
             {
-              "expr": "sum(rate(http_requests_total{namespace=\"poc-app\"}[1m])) or sum(rate(starlette_requests_total{namespace=\"poc-app\"}[1m]))",
+              "expr": "sum(rate(http_requests_total{namespace=\"poc-app\"}[1m]))",
               "legendFormat": "Total RPS"
             }
           ],

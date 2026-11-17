@@ -1,0 +1,11 @@
+loki:
+  # O chart cria o datasource Loki no Grafana; o padrao deve continuar sendo o Prometheus
+  isDefault: false
+  persistence:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+promtail:
+  enabled: true
