@@ -1,0 +1,16 @@
+# make smoke-test - 2026-11-17 15:33
+🔎 Smoke test
+  ✅ Nos do cluster Ready (3)
+  ✅ App /healthz responde 200
+  ✅ App carregou Secret (secret_loaded)
+  ✅ App expoe metricas HTTP
+  ✅ ArgoCD Application Synced/Healthy
+  ✅ Rollout Healthy
+  ✅ HPA le a CPU (metrics-server)
+  ✅ Kyverno bloqueia :latest (motivo: tag)
+  ✅ Kyverno bloqueia sem assinatura (motivo: no signatures found; precisa de make unsigned-image)
+  ✅ Prometheus: target da app UP
+  ✅ Prometheus: regras PocApp carregadas
+  ✅ Grafana saudavel
+  ✅ Loki recebe logs da app
+Resultado: 13 ok, 0 falha(s)
