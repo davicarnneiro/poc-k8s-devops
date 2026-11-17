@@ -17,6 +17,8 @@ FROM python:3.12.12-alpine3.22 AS runtime
 LABEL org.opencontainers.image.title="poc-devops-api" \
       org.opencontainers.image.description="API FastAPI para POC Kubernetes Local"
 
+ARG APP_VERSION=unknown
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:$PATH"

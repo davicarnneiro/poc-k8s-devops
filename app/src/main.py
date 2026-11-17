@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 
+APP_VERSION = os.getenv("APP_VERSION", "unknown")
+
 app = FastAPI(title="POC DevOps API", version="1.0.0")
 
 REQUEST_COUNT = Counter(
@@ -25,7 +27,7 @@ def read_root():
 
 @app.get("/healthz")
 def health_check():
-    return {"status": "healthy"}
+    return {"status": "healthy", "version": APP_VERSION}
 
 
 @app.get("/metrics")

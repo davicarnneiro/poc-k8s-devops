@@ -46,12 +46,12 @@ jobs:
       image_tag: ${{ steps.meta.outputs.semver }}
       sha_tag: ${{ steps.meta.outputs.sha }}
     steps:
-      - name: Checkout do codigo (historico completo para SemVer)
+      - name: Checkout do codigo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Definir Tag Semantica (SemVer) e Commit SHA
+      - name: Definir Tag Semantica e Commit SHA
         id: meta
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
@@ -77,6 +77,7 @@ jobs:
       - name: Build da Imagem Docker Multi-Stage
         run: |
           docker build \
+            --build-arg APP_VERSION=${{ steps.meta.outputs.semver }} \
             -t $REGISTRY/$IMAGE_NAME:${{ steps.meta.outputs.semver }} \
             -t $REGISTRY/$IMAGE_NAME:${{ steps.meta.outputs.sha }} \
             ./app
@@ -160,12 +161,19 @@ jobs:
         with:
           ref: main
 
-      - name: Atualizar Tag SemVer no Chart Helm
+      - name: Atualizar Tag no Chart Helm
         run: |
           IMAGE_TAG="${{ needs.build-and-scan.outputs.image_tag }}"
           sed -i "s/tag: .*/tag: \"$IMAGE_TAG\"/" chart/poc-devops-api/values.yaml
+          
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add chart/poc-devops-api/values.yaml
-          git commit -m "chore(cd): update image tag to $IMAGE_TAG [skip ci]"
-          git push origin main
+
+          # Verifica se há modificações reais antes de tentar o commit
+          if git diff --staged --quiet; then
+            echo "Nenhuma alteração detectada no values.yaml. Pulando commit."
+          else
+            git commit -m "chore(cd): update image tag to $IMAGE_TAG [skip ci]"
+            git push origin main
+          fi
