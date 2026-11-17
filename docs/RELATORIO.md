@@ -11,7 +11,8 @@
 | **Trivy antes do push** | Imagem vulnerável nunca chega ao registry |
 | **Cosign por digest + Kyverno `ImageValidatingPolicy`** | Garante que só imagens geradas pelo pipeline rodam no cluster |
 | **GitOps (ArgoCD)** | O pipeline não acessa o cluster; ele apenas altera o Git (estado desejado), com `selfHeal` e auditoria |
-| **Argo Rollouts (canary)** | Entrega progressiva 10→25→50→100% com rollback rápido via Ingress NGINX |
+| **Argo Rollouts (canary) + AnalysisTemplate** | Entrega progressiva 10→25→50→100% via Ingress NGINX, com análise no Prometheus (sucesso ≥ 95%, P95 ≤ 500 ms) e **rollback automático** |
+| **`make smoke-test`** | 13 verificações automáticas que comprovam o ambiente de ponta a ponta |
 | **kube-prometheus-stack + Loki/Promtail** | Métricas, dashboards, alertas e logs integrados no Grafana |
 | **Makefile como ponto único** | Reprodutível, idempotente, versões fixas, simples de explicar |
 | **Versões fixas** | Charts e manifests pinados para que o ambiente funcione igual no futuro |
@@ -29,8 +30,7 @@
 
 - Gerenciamento de segredos (Sealed Secrets / SOPS / Vault) e TLS (cert-manager) no Harbor e nos ingresses
 - Substituir ingress-nginx (aposentado pelo projeto Kubernetes) pela Gateway API
-- `AnalysisTemplate` no Argo Rollouts: rollback automático por taxa de erro/latência (Prometheus)
-- Alertas de SLO (taxa de erro 5xx e latência P95) sobre as métricas HTTP já expostas pela app
+- Notificação real no Alertmanager (e-mail/Slack) e SLOs com *burn rate*; análise do canary também por logs (Loki)
 - SBOM (Syft) e attestations; assinatura *keyless*
 - NetworkPolicies, PodSecurity `restricted`, Kyverno em modo mais amplo
 - Persistência/HA para Loki e Prometheus; Alertmanager com notificação real (e-mail/Slack)

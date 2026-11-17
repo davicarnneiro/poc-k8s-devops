@@ -130,6 +130,7 @@ Para recriar do zero: `make down && make all`.
 ```bash
 make help           # lista todos os alvos
 make status         # nós e pods de todos os namespaces
+make smoke-test     # valida o ambiente de ponta a ponta (13 verificações)
 make rollouts-cli   # (opcional) plugin 'kubectl argo rollouts' no host, para ver o canary ao vivo
 ```
 
@@ -139,7 +140,7 @@ make rollouts-cli   # (opcional) plugin 'kubectl argo rollouts' no host, para ve
 
 ## 5. Configurando o CI/CD (uma vez)
 
-**5.1 Harbor** — acesse http://harbor.local:8080 (`admin` / `Harbor@12345`) → *Projects → New Project* → nome `poc-devops`.
+**5.1 Harbor** — acesse http://harbor.local:8080 (`admin` / `Harbor@12345`) → *Projects → New Project* → nome `poc-devops`, marcando **Access Level: Public**. (Projeto privado exigiria `imagePullSecret` e credenciais no Kyverno; para a POC usamos público, e a segurança fica por conta da assinatura Cosign exigida pelo Kyverno.)
 
 **5.2 SonarQube** — http://sonar.local:8080 (`admin`/`admin`, troque a senha) → *My Account → Security → Generate Token*.
 
@@ -203,7 +204,37 @@ kubectl run load --rm -it --image=busybox:1.36 -n poc-app -- \
 
 **Observabilidade:** Grafana http://grafana.local:8080 (dashboard *POC DevOps API*; *Explore → Loki* para logs) e Prometheus http://prometheus.local:8080 (*Alerts* → `PocAppPodDown`).
 
+**Smoke test:** `make smoke-test` verifica nós, app, métricas, ArgoCD, Rollout, HPA, as duas políticas do Kyverno, Prometheus (target e regras), Grafana e Loki, e retorna erro se algo falhar.
+
 ## 8. Rollback
+
+**Rollback automático (canary com análise)** — o Argo Rollouts consulta o Prometheus durante o canary
+(`chart/.../analysistemplate.yaml`). Se a taxa de sucesso do canary ficar **< 95%** ou a latência P95 **> 500 ms**, o deploy é
+**abortado sozinho** e 100% do tráfego volta para a versão estável. Sem tráfego, a análise passa (não trava deploys sem carga).
+
+Demonstração (a app tem uma taxa de erro simulada, `APP_ERROR_RATE`, controlada por `config.errorRate` no values):
+
+```bash
+# 1. Terminal A: gerar tráfego contínuo
+while true; do curl -s -o /dev/null http://app.local:8080/; sleep 0.2; done
+
+# 2. Terminal B: acompanhar o canary
+kubectl argo rollouts get rollout poc-devops-api -n poc-app --watch
+
+# 3. Provocar a falha: em chart/poc-devops-api/values.yaml troque  errorRate: "0"  por  "1"
+git commit -am "test: simula erros para demo de rollback automatico [skip ci]" && git push
+#    O ConfigMap muda -> novo ReplicaSet -> canary 10% -> AnalysisRun falha -> Rollout abortado (Degraded),
+#    tráfego volta 100% à versão estável.
+
+# 4. Voltar ao normal: errorRate: "0" de novo
+git commit -am "revert: remove erros simulados [skip ci]" && git push
+```
+
+`[skip ci]` evita rodar o pipeline completo, pois só o values mudou. Evidências: tela do `--watch` mostrando o `AnalysisRun` com
+`Failed` e o Rollout `Degraded`, e o alerta `PocAppHighErrorRate` no Prometheus.
+
+**Alertas configurados** (`infra/values/prometheus-values.yaml`): `PocAppPodDown`, `PocAppHighErrorRate` (5xx > 5%),
+`PocAppHighLatencyP95` (> 500 ms) e `PocAppHpaMaxedOut`.
 
 **Durante um canary (antes de 100%)**
 ```bash
@@ -226,10 +257,12 @@ kubectl argo rollouts undo poc-devops-api -n poc-app
 
 | Sintoma | Causa provável | Solução |
 |---|---|---|
-| `ImagePullBackOff` do Harbor | containerd dos nós sem config do registry (ClusterIP mudou) | `make configure-kind-registry` |
+| `ImagePullBackOff` do Harbor (`not found`/`404`) | nós do kind sem a resolução de `harbor.local` (a entrada no `/etc/hosts` do nó se perde ao reiniciar o PC/containers, ou o ClusterIP do ingress mudou) | `make configure-kind-registry` e depois `kubectl delete pod -n poc-app -l app.kubernetes.io/name=poc-devops-api` |
 | `docker push` → "http: server gave HTTP response" | falta `insecure-registries` | seção 3.2 e reiniciar Docker |
 | Pod negado: "imagem deve estar assinada" | imagem não assinada, ou `cosign.pub` da política difere da chave usada | rode o pipeline completo; confira a chave em `verify-image-signature.yaml` |
-| Kyverno não consegue verificar (erro de rede/HTTP) | admission controller sem `hostAliases`/`--allowInsecureRegistry` | `make kyverno-registry` |
+| Kyverno: "server gave HTTP response to HTTPS client" | admission controller sem `allowInsecureRegistry`/`hostAliases` ou sem a porta 8080 no Service do ingress | `make kyverno` |
+| Kyverno/kubelet: `UNAUTHORIZED ... action: pull` | projeto `poc-devops` do Harbor está privado | torne o projeto **Public** (seção 5.1) |
+| ReplicaSet não cria pods após corrigir a causa | backoff do controller | `kubectl delete rs -n poc-app -l app.kubernetes.io/name=poc-devops-api` |
 | ArgoCD `Unknown`/`ComparisonError` | repositório privado ou sem internet | seção 5.5 |
 | ArgoCD: `no matches for kind "Rollout"` | CRD do Rollouts ausente | `make rollouts` |
 | App `Degraded` logo após instalar | a tag do `values.yaml` ainda não existe no Harbor | rode o pipeline uma vez (seção 6) |

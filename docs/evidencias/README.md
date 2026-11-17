@@ -18,4 +18,6 @@ Salve os prints nesta pasta com os nomes abaixo e marque o que já foi feito.
 | 12 | Grafana Explore → Loki (logs da app) | 12-loki.png | [ ] |
 | 13 | Prometheus: regra/alerta `PocAppPodDown` | 13-alerta.png | [ ] |
 | 14 | HPA escalando sob carga | 14-hpa.png | [ ] |
-| 15 | Rollback (`abort` ou `git revert`) | 15-rollback.png | [ ] |
+| 15 | Rollback manual (`abort` ou `git revert`) | 15-rollback.png | [ ] |
+| 16 | Rollback **automático**: `AnalysisRun` Failed e Rollout abortado | 16-rollback-automatico.png | [ ] |
+| 17 | Saída do `make smoke-test` (13/13) | 17-smoke-test.png | [ ] |
