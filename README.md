@@ -149,7 +149,7 @@ make rollouts-cli   # (opcional) plugin 'kubectl argo rollouts' no host, para ve
 
 ## 5. Configurando o CI/CD (uma vez)
 
-**5.1 Harbor** — crie o projeto `poc-devops` **público** com `make harbor-project` (idempotente; aguarde o Harbor ficar pronto, `kubectl get pods -n harbor`). Pela interface: http://harbor.local:8080 (`admin` / `Harbor@12345`) → *Projects → New Project* → nome `poc-devops`, marcando **Access Level: Public**. (Projeto privado exigiria `imagePullSecret` e credenciais no Kyverno; para a POC usamos público, e a segurança fica por conta da assinatura Cosign exigida pelo Kyverno.)
+**5.1 Harbor** — o projeto `poc-devops` **público** precisa existir **antes do pipeline** (o job 3 faz push nele). Crie com `make harbor-project` (idempotente; aguarde o Harbor ficar pronto, `kubectl get pods -n harbor`); o `make unsigned-image` (seção 7) também o cria, então basta rodar um dos dois. Pela interface: http://harbor.local:8080 (`admin` / `Harbor@12345`) → *Projects → New Project* → nome `poc-devops`, marcando **Access Level: Public**. (Projeto privado exigiria `imagePullSecret` e credenciais no Kyverno; para a POC usamos público, e a segurança fica por conta da assinatura Cosign exigida pelo Kyverno.)
 
 **5.2 SonarQube** — http://sonar.local:8080 (`admin`/`admin`, troque a senha) → *My Account → Security → Generate Token*.
 
