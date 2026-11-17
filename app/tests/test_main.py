@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+
 from src.main import app
 
 client = TestClient(app)
@@ -18,7 +19,31 @@ def test_root():
     assert "environment" in data
 
 
+def test_root_uses_env(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "teste")
+    monkeypatch.setenv("APP_MESSAGE", "ola")
+    monkeypatch.setenv("API_TOKEN", "x")
+    data = client.get("/").json()
+    assert data["environment"] == "teste"
+    assert data["message"] == "ola"
+    assert data["secret_loaded"] is True
+
+
 def test_metrics():
     response = client.get("/metrics")
     assert response.status_code == 200
     assert "app_requests_total" in response.text
+
+
+def test_http_metrics_are_recorded():
+    client.get("/healthz")
+    body = client.get("/metrics").text
+    assert 'http_requests_total{method="GET",path="/healthz",status="200"}' in body
+    assert "http_request_duration_seconds_bucket" in body
+
+
+def test_unknown_route_does_not_create_label_per_url():
+    client.get("/nao-existe-123")
+    body = client.get("/metrics").text
+    assert 'path="unmatched",status="404"' in body
+    assert "/nao-existe-123" not in body

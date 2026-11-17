@@ -7,7 +7,7 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip>=26.2.0 \
+RUN pip install --no-cache-dir --upgrade "pip>=26.2.0" \
     && pip install --no-cache-dir -r requirements.txt \
     && rm -rf /opt/venv/lib/python*/site-packages/pip*
 
