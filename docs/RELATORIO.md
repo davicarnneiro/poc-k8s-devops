@@ -2,14 +2,11 @@
 
 ## Resumo
 
-- **O que foi feito:** um ciclo completo de entrega, 100% local (kind, Harbor, GitHub Actions self-hosted): testes, SonarQube e Trivy no pipeline, imagem assinada com Cosign, deploy por GitOps (ArgoCD), canary com Argo Rollouts, políticas Kyverno e observabilidade (Prometheus, Grafana, Loki). Sobe com `make all`.
-- **Sem Cloud:** nenhum provedor de nuvem (AWS, GCP, Azure) é usado; cluster, registry, CI, GitOps e observabilidade rodam na máquina local. A internet entra só para **baixar** imagens, charts Helm e manifests públicos (versões fixas) e para o ArgoCD e o runner falarem com o **GitHub**, que hospeda o repositório, como o desafio prevê ao pedir GitHub Actions self-hosted.
-- **Diferenciais entregues:** Cosign, ArgoCD, Canary com **rollback automático** (análise no Prometheus) e alertas.
-- **Decisão central:** o pipeline nunca acessa o cluster; ele só altera o Git (a tag da imagem, o SHA do commit) e o ArgoCD aplica. O Kyverno garante que só roda imagem assinada pelo pipeline.
-- **Maior dificuldade:** o registry local sem TLS. Nós do kind, Kyverno e Cosign precisavam alcançar e confiar no `harbor.local:8080`, e cada um falhou por um motivo diferente (seção 2).
-- **Principais melhorias futuras:** segredos e TLS de verdade, assinatura *keyless*, Gateway API em vez do ingress-nginx e versionamento semântico (seção 3).
+Ciclo completo de entrega **100% local**, sem provedor de nuvem, que sobe com `make all`: pipeline com testes, SonarQube e Trivy, imagem assinada com Cosign, deploy por GitOps (ArgoCD) com canary e rollback automático, políticas Kyverno e observabilidade (Prometheus, Grafana e Loki).
 
-Detalhes: decisões (seção 1), dificuldades (seção 2) e melhorias (seção 3). Provas de funcionamento em [evidencias/](evidencias/README.md).
+O pipeline nunca acessa o cluster: só altera o Git, e o ArgoCD aplica. A internet é usada apenas para baixar imagens e charts públicos e para falar com o GitHub.
+
+Maior dificuldade: o registry local sem TLS (seção 2). Melhorias previstas: segredos e TLS, assinatura *keyless*, Gateway API e versionamento semântico (seção 3).
 
 ## 1. Decisões técnicas
 
@@ -77,7 +74,6 @@ Detalhes: decisões (seção 1), dificuldades (seção 2) e melhorias (seção 3
 - **Análise do canary:** excluir as sondas (`/healthz`) das métricas, exigir um tráfego mínimo antes de promover e considerar também logs (Loki)
 - **Alertas:** notificação real no Alertmanager (e-mail/Slack) e SLOs com *burn rate*
 - **Logs:** migrar do `loki-stack` (descontinuado) para o chart do Loki 3.x, resolvendo o aviso de volume no Grafana
-- **Nomes de host:** usar `*.localhost` (resolve para o loopback sem editar o `/etc/hosts` e dispensa o `insecure-registries` do Docker) para eliminar o único passo manual na máquina; exige renomear os hosts (ingress, Harbor, política do Kyverno, imagens) e revalidar o ambiente
 - **Versionamento:** versão semântica (`vX.Y.Z`) nas imagens e no chart, gerada por tags git ou por *conventional commits*, além do SHA
 - **Supply chain:** SBOM (Syft), attestations e assinatura *keyless*
 - **Segurança do cluster:** NetworkPolicies, PodSecurity `restricted`, Kyverno em modo mais amplo
