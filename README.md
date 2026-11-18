@@ -170,6 +170,7 @@ Endereços e credenciais (também em `make credentials`):
 
 ```bash
 make status         # todos os pods Running ou Completed (a aplicação ainda não aparece)
+Ou direto com kubectl: kubectl get nodes -o wide
 make credentials    # mostra as URLs e a senha do ArgoCD
 ```
 
@@ -331,7 +332,7 @@ make rollouts-cli      # (uma vez) instala o plugin 'kubectl argo rollouts'
 kubectl argo rollouts get rollout poc-devops-api -n poc-app --watch
 ```
 
-Para não esperar os ~17 min, promova o canary de uma vez:
+Para não esperar, é possivel promover o canary de uma vez com o comando abaixo:
 
 ```bash
 kubectl argo rollouts promote poc-devops-api -n poc-app --full
