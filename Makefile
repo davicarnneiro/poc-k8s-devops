@@ -30,7 +30,7 @@ help: ## Lista os alvos
 
 # Ordem: cluster -> base -> plataforma -> politicas -> observabilidade -> app
 all: hosts-check up rollouts platform policies observability app credentials ## Sobe todo o ambiente
-	@echo "✅ Ambiente completo! Proximo passo: configurar runner/secrets (README, secao 5)."
+	@echo "✅ Ambiente completo! Proximo passo: configurar o CI/CD: README, Fase 3 (projeto no Harbor, Sonar, secrets e runner)."
 
 ## ---------------------------------------------------------------- Cluster
 up: cluster-create ingress metrics-server ## Cluster kind + Ingress + Metrics Server
@@ -155,7 +155,7 @@ HARBOR_URL      ?= http://harbor.local:8080
 UNSIGNED_IMAGE  := harbor.local:8080/poc-devops/nao-assinada:1.0
 
 # Cria o projeto 'poc-devops' (PUBLICO) no Harbor. Idempotente: se ja existe, apenas garante que esta publico.
-# Projeto publico evita credenciais de pull no Kyverno e nos nos (README, secao 5.1).
+# Projeto publico evita credenciais de pull no Kyverno e nos nos (README, Fase 3.1).
 harbor-project: ## Cria o projeto poc-devops (publico) no Harbor
 	@code=$$(curl -s -o /dev/null -w '%{http_code}' -u "$(HARBOR_USER):$(HARBOR_PASSWORD)" -X POST $(HARBOR_URL)/api/v2.0/projects \
 		-H 'Content-Type: application/json' -d '{"project_name":"poc-devops","metadata":{"public":"true"}}'); \
