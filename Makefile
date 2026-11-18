@@ -23,13 +23,13 @@ LOKI_CHART_VERSION       := 2.10.3
 .PHONY: help all up cluster-create ingress metrics-server rollouts \
         helm-repos platform configure-kind-registry harbor sonarqube \
         kyverno kyverno-registry policies argocd app observability rollouts-cli \
-        credentials status hosts-check harbor-project smoke-test unsigned-image down
+        credentials status hosts-check cosign-key-check harbor-project smoke-test unsigned-image down
 
 help: ## Lista os alvos
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2}'
 
 # Ordem: cluster -> base -> plataforma -> politicas -> observabilidade -> app
-all: hosts-check up rollouts platform policies observability app credentials ## Sobe todo o ambiente
+all: hosts-check cosign-key-check up rollouts platform policies observability app credentials ## Sobe todo o ambiente
 	@echo "✅ Ambiente completo! Proximo passo: configurar o CI/CD: README, Fase 3 (projeto no Harbor, Sonar, secrets e runner)."
 
 ## ---------------------------------------------------------------- Cluster
@@ -120,7 +120,16 @@ kyverno-registry:
 		-p "{\"spec\":{\"template\":{\"spec\":{\"hostAliases\":[{\"ip\":\"$$INGRESS_IP\",\"hostnames\":[\"harbor.local\"]}]}}}}"
 	kubectl rollout status deployment/kyverno-admission-controller -n kyverno --timeout=120s
 
-policies: ## Politicas Kyverno (proibir :latest + verificar cosign)
+# A politica de assinatura precisa da chave PUBLICA do seu par Cosign. O repositorio traz um texto de exemplo no lugar dela;
+# aplicar assim faria o Kyverno negar TODOS os pods do poc-app com um erro obscuro (asn1). Este alvo para antes, com uma mensagem clara.
+cosign-key-check: ## Confere se a chave publica do Cosign foi colada na politica (README, Fase 1.3)
+	@if grep -q "SUA CHAVE AQUI" infra/kyverno/verify-image-signature.yaml; then \
+		echo "❌ A chave publica do Cosign ainda e o texto de exemplo."; \
+		echo "   Cole o conteudo de cosign.pub em infra/kyverno/verify-image-signature.yaml (README, Fase 1.3)."; \
+		exit 1; \
+	fi
+
+policies: cosign-key-check ## Politicas Kyverno (proibir :latest + verificar cosign)
 	kubectl create namespace poc-app --dry-run=client -o yaml | kubectl apply -f -
 	kubectl apply -f infra/kyverno/
 
