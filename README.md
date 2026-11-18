@@ -56,6 +56,20 @@ Recursos: **~12 GB de RAM livres e 6 CPUs** (SonarQube e Harbor são pesados). L
 
 ## 3. Preparação da máquina (uma vez)
 
+**3.0 Antes de tudo: fork e ajustes.** O pipeline **faz commit da tag da imagem** no repositório e o ArgoCD lê esse mesmo repositório, então você
+precisa de um repositório **seu**, com permissão de escrita, antes de rodar o `make all`:
+
+1. Faça um **fork** deste repositório no GitHub e clone o **seu fork** (não o original).
+2. No fork, abra a aba **Actions** e habilite os workflows (em forks eles vêm desativados).
+3. Aponte o ArgoCD para o seu fork **antes do `make all`** (que já executa o `make app`), trocando o `repoURL` em `infra/argocd/application.yaml`:
+
+```bash
+sed -i 's#davicarnneiro/poc-k8s-devops#SEU_USUARIO/poc-k8s-devops#' infra/argocd/application.yaml
+git commit -am "chore: aponta o ArgoCD para o meu fork [skip ci]" && git push origin main
+```
+
+Use o mesmo repositório do fork em `REPO_URL` (runner, seção 5.4) e nos secrets (seção 5.3). Sobre a chave do Cosign, veja a seção 3.3.
+
 **3.1 `/etc/hosts`** — todos os serviços usam `*.local` na porta 8080. Esse passo é **necessário nesta configuração**: todos compartilham a mesma porta e o Ingress NGINX escolhe o serviço pelo **nome do host** (`http://localhost:8080` devolve 404). O nome `harbor.local:8080` também faz parte do endereço das imagens, usado pelo `docker push`, pela assinatura do Cosign e pela política do Kyverno.
 
 ```
@@ -100,6 +114,8 @@ make all          # sobe TUDO, na ordem correta, e mostra as credenciais no fina
 
 Equivale a: `up` + `rollouts` + `platform` + `policies` + `observability` + `app` + `credentials`
 (antes, verifica o `/etc/hosts` com `hosts-check`).
+
+> **Logo após o `make all`, o app ainda não está no ar:** `app.local:8080` responde 503, o Rollout aparece `Degraded` e o Kyverno nega os pods. É o esperado: a imagem só existe depois que o projeto do Harbor for criado (seção 5.1) e o pipeline rodar (seção 6).
 
 ### 4.2 Só o cluster base
 
