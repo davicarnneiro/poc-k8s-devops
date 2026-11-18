@@ -76,6 +76,7 @@ Maior dificuldade: o registry local sem TLS (seção 2). Melhorias previstas: se
 - **Logs:** migrar do `loki-stack` (descontinuado) para o chart do Loki 3.x, resolvendo o aviso de volume no Grafana
 - **Versionamento:** versão semântica (`vX.Y.Z`) nas imagens e no chart, gerada por tags git ou por *conventional commits*, além do SHA
 - **Supply chain:** SBOM (Syft), attestations e assinatura *keyless*
+- **Chave pública do Cosign:** ler a chave da política Kyverno a partir de um ConfigMap (`key.expression` com `resource.Get`) em vez de colá-la no YAML, eliminando o passo manual e o placeholder.
 - **Segurança do cluster:** NetworkPolicies, PodSecurity `restricted`, Kyverno em modo mais amplo
 - **Resiliência:** persistência e HA para Loki e Prometheus
 - **Qualidade:** validação do chart com `kubeconform` e ambientes dev/prd
