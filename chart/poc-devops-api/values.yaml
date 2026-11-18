@@ -20,7 +20,7 @@ config:
   appEnv: "devops-local"
   appMessage: "Aplicacao implantada via Helm + ArgoCD!"
   # Demo de rollback automatico: fracao (0 a 1) das requisicoes a "/" que retornam 500. Mantenha "0".
-  errorRate: "0"
+  errorRate: "1"
 
 deploymentStrategy:
   type: canary
