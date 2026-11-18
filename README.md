@@ -269,7 +269,7 @@ Na mesma tela *New self-hosted runner*, siga os comandos exibidos (`./config.sh 
 **3.5 ArgoCD e repositório privado.** O ArgoCD faz o `git pull` do repositório definido no `repoURL` (Fase 0).
 
 - **Repositório público:** nada a fazer.
-- **Repositório privado:** é preciso cadastrar uma credencial, que vive no cluster e **precisa ser refeita a cada `make down`**.
+- **Repositório privado:** o ArgoCD precisa de um **token do GitHub** (só leitura) para clonar o repositório. Você o cadastra no ArgoCD, que o guarda como um Secret no cluster; por isso o cadastro **precisa ser refeito a cada `make down`**.
 
 <details>
 <summary><b>Como cadastrar a credencial de um repositório privado</b></summary>
