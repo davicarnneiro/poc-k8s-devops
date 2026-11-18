@@ -123,7 +123,7 @@ kyverno-registry:
 # A politica de assinatura precisa da chave PUBLICA do seu par Cosign. O repositorio traz um texto de exemplo no lugar dela;
 # aplicar assim faria o Kyverno negar TODOS os pods do poc-app com um erro obscuro (asn1). Este alvo para antes, com uma mensagem clara.
 cosign-key-check: ## Confere se a chave publica do Cosign foi colada na politica (README, Fase 1.3)
-	@if grep -q "SUA CHAVE AQUI" infra/kyverno/verify-image-signature.yaml; then \
+	@if grep -q "SUA CHAVE" infra/kyverno/verify-image-signature.yaml; then \
 		echo "❌ A chave publica do Cosign ainda e o texto de exemplo."; \
 		echo "   Cole o conteudo de cosign.pub em infra/kyverno/verify-image-signature.yaml (README, Fase 1.3)."; \
 		exit 1; \

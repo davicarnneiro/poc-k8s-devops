@@ -25,7 +25,7 @@ spec:
         key:
           data: |-
             -----BEGIN PUBLIC KEY-----
-            SUA CHAVE AQUI
+            <SUA CHAVE PUBLICA AQUI>
             -----END PUBLIC KEY-----
   validations:
     - expression: >
