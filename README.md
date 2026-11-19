@@ -392,7 +392,7 @@ kubectl get hpa,pods,ingress -n poc-app
 Para ver o HPA escalar, gere carga dentro do cluster (os limits no `--overrides` são exigidos pela política do Kyverno) e acompanhe em outro terminal:
 
 ```bash
-kubectl run load -n poc-app --image=busybox:1.36 --restart=Never --overrides='{"spec":{"containers":[{"name":"load","image":"busybox:1.36","command":["sh","-c","while true; do wget -q -O- http://poc-devops-api/ >/dev/null; done"],"resources":{"limits":{"cpu":"100m","memory":"64Mi"}}}]}}'
+kubectl run load -n poc-app --image=busybox:1.36 --restart=Never --overrides='{"spec":{"containers":[{"name":"load","image":"busybox:1.36","command":["sh","-c","for i in 1 2 3 4 5 6 7 8; do (while true; do wget -q -O- http://poc-devops-api/healthz >/dev/null; done) & done; wait"],"resources":{"limits":{"cpu":"500m","memory":"64Mi"}}}]}}'
 kubectl get hpa -n poc-app -w        # as réplicas sobem de 2 até no máximo 5
 kubectl delete pod load -n poc-app   # ao terminar
 ```
