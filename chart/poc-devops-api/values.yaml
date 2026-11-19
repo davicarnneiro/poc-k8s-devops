@@ -1,7 +1,7 @@
 fullnameOverride: poc-devops-api
 image:
   repository: harbor.local:8080/poc-devops/poc-devops-api
-  tag: "8c05c2e"
+  tag: "770cb52"
   pullPolicy: IfNotPresent
 
 container:
